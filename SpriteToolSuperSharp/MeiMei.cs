@@ -1,8 +1,8 @@
-﻿using System;
+﻿using AsarCLR;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using AsarCLR;
 
 namespace SpriteToolSuperSharp {
     class MeiMei {
@@ -56,7 +56,7 @@ namespace SpriteToolSuperSharp {
             MeiMeiRom rom = new MeiMeiRom(Name);    // actual rom to patch
             bool returnvalue = ResizeData(out string ErrMsg, ref rom);
             Asar.close();
-            
+
             if (!returnvalue) {
                 Console.Out.WriteLine(ErrMsg);
                 Console.Out.WriteLine($"\n\nError occurred in MeiMei\n{ErrMsg}\nYour rom has reverted before Pixi insert");
@@ -89,7 +89,7 @@ namespace SpriteToolSuperSharp {
                 for (int lv = 0; lv < 0x200; lv++) {
                     if (remapped[lv]) continue;
                     int sprAddrSNES = (ReadByte(NowRom, 0x077100 + lv) << 16) + ReadWord(NowRom, 0x02EC00 + (lv * 2));
-                    if ((sprAddrSNES&0x8000) == 0) {
+                    if ((sprAddrSNES & 0x8000) == 0) {
                         ErrMsg = "Sprite Data has invalid address";
                         return !revert;
                     }
@@ -266,7 +266,7 @@ namespace SpriteToolSuperSharp {
 
         public class MeiMeiRom : Rom {
             public MeiMeiRom(string filename) : base(filename) {
-                
+
             }
             public int GetRomData(int addr) {
                 if (addr < 0 || addr >= RomSize) return -1;

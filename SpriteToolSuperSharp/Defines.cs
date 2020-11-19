@@ -3,10 +3,10 @@
 namespace SpriteToolSuperSharp {
     class ToolData {
         public Dictionary<Defines.ListType, Sprite[]> SprLists = new() {
-             { Defines.ListType.Sprite, new Sprite[Defines.MaxSprCount] },
-             { Defines.ListType.Cluster, new Sprite[Defines.SprCount] },
-             { Defines.ListType.Extended, new Sprite[Defines.SprCount] },
-             { Defines.ListType.Overworld, new Sprite[Defines.SprCount] }
+            { Defines.ListType.Sprite, new Sprite[Defines.MaxSprCount] },
+            { Defines.ListType.Cluster, new Sprite[Defines.SprCount] },
+            { Defines.ListType.Extended, new Sprite[Defines.SprCount] },
+            { Defines.ListType.Overworld, new Sprite[Defines.SprCount] }
         };
         public byte[] PlsLevelPtrs = new byte[0x400];
         public byte[] PlsSpritePtr = new byte[0x4000];

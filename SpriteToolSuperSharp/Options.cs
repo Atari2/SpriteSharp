@@ -14,8 +14,8 @@ namespace SpriteToolSuperSharp {
         public string AsmDirPath = string.Empty;
 
         public bool Debug { get; private set; } = false;
-        public bool PerLevel { get; private set; }  = false;
-        public bool Disable255SpritePerLevel { get; private set; }  = false;
+        public bool PerLevel { get; private set; } = false;
+        public bool Disable255SpritePerLevel { get; private set; } = false;
         public bool KeepTmpFile { get; private set; } = false;
         public bool ExtMod { get; private set; } = true;
         public bool DisableMeiMei { get; private set; } = false;

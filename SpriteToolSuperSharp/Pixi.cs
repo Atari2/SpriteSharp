@@ -1,9 +1,9 @@
-﻿using System;
+﻿using AsarCLR;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using AsarCLR;
 
 namespace SpriteToolSuperSharp {
     class Pixi {

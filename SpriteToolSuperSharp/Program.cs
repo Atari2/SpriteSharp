@@ -1,6 +1,6 @@
-﻿using System;
+﻿using AsarCLR;
+using System;
 using System.Reflection;
-using AsarCLR;
 
 namespace SpriteToolSuperSharp {
     class Program {

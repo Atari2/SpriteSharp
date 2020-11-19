@@ -15,7 +15,7 @@ namespace SpriteToolSuperSharp {
         public int RomSize;
         public byte[] RomData;
         public byte[] HeaderData;
- 
+
         public Rom() { }
         public Rom(string name) {
             Filename = name;
@@ -52,7 +52,7 @@ namespace SpriteToolSuperSharp {
         public Pointer PointerFromSnes(int address, int size = 3, int bank = 0x00) {
             return new Pointer(GetPointer(RomData, SnesToPc(address), size, bank));
         }
-        
+
         public Pointer PointerFromPc(int address, int size = 3, int bank = 0x00) {
             return new Pointer(GetPointer(RomData, address, size, bank));
         }
@@ -95,11 +95,11 @@ namespace SpriteToolSuperSharp {
 
         public Pointer() { }
         public Pointer(int snes) {
-            LowByte = (byte) (snes & 0xFF);
+            LowByte = (byte)(snes & 0xFF);
             HighByte = (byte)((snes >> 8) & 0xFF);
             BankByte = (byte)((snes >> 16) & 0xFF);
         }
-        
+
         public bool IsEmpty() {
             return LowByte == Defines.RTLLow && HighByte == Defines.RTLHigh && BankByte == Defines.RTLBank;
         }
@@ -218,7 +218,7 @@ namespace SpriteToolSuperSharp {
         }
         public static List<Map16> FromBytes(byte[] data) {
             List<Map16> maps = new List<Map16>(data.Length / 8);
-            for (int i = 0; i < data.Length; i+=8) {
+            for (int i = 0; i < data.Length; i += 8) {
                 maps.Add(new Map16(data[i..(i + 8)]));
             }
             return maps;
@@ -261,13 +261,13 @@ namespace SpriteToolSuperSharp {
             for (int i = 0; i < raw.Length; i += 8) {
                 Map16 m = new();
                 m.TopLeft.Tile = raw[i];
-                m.TopLeft.Prop = raw[i+1];
-                m.BotLeft.Tile = raw[i+2];
-                m.BotLeft.Prop = raw[i+3];
-                m.TopRight.Tile = raw[i+4];
-                m.TopRight.Prop = raw[i+5];
-                m.BotRight.Tile = raw[i+6];
-                m.BotRight.Prop = raw[i+7];
+                m.TopLeft.Prop = raw[i + 1];
+                m.BotLeft.Tile = raw[i + 2];
+                m.BotLeft.Prop = raw[i + 3];
+                m.TopRight.Tile = raw[i + 4];
+                m.TopRight.Prop = raw[i + 5];
+                m.BotRight.Tile = raw[i + 6];
+                m.BotRight.Prop = raw[i + 7];
                 maps.Add(m);
             }
             return maps;
@@ -506,7 +506,7 @@ namespace SpriteToolSuperSharp {
 
         [JsonProperty("Additional Byte Count (extra bit clear)")]
         public int addbcountclear;
-        
+
         [JsonProperty("Additional Byte Count (extra bit set)")]
         public int addbcountset;
 
@@ -525,9 +525,9 @@ namespace SpriteToolSuperSharp {
         public int Line = -1;
         public int Number = 0;
         public int Level = 0x200;
-        public SpriteTable Table = new ();
+        public SpriteTable Table = new();
         public Dictionary<string, Pointer> StatusPointers = new();
-        public Pointer ExtCapePtr = new ();
+        public Pointer ExtCapePtr = new();
         public int ByteCount = 0;
         public int ExtraByteCount = 0;
 
@@ -606,7 +606,7 @@ namespace SpriteToolSuperSharp {
             byte[] prop = cfg[3].Split(' ', '\t').Select(x => Convert.ToByte(x.Trim(), 16)).ToArray();
             Regex exRe = new Regex(@"([\da-fA-F]{1,2}):([\da-fA-F]{1,2})", RegexOptions.Compiled);
             Match exM = exRe.Match(cfg.Count > 5 ? cfg[5] : "");
-            if ((cfg.Count != 5 && cfg.Count != 6) || tweaks.Length != 6 || prop.Length != 2) 
+            if ((cfg.Count != 5 && cfg.Count != 6) || tweaks.Length != 6 || prop.Length != 2)
                 throw new Exception($"CFG file had wrong format {CfgFile}");
             for (int i = 0; i < cfg.Count; i++) {
                 switch (i) {

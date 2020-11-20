@@ -211,7 +211,7 @@ namespace AsarCLR {
             bool shouldReset = true, Dictionary<string, string> additionalDefines = null,
             string stdIncludeFile = null, string stdDefineFile = null) {
             if (includePaths == null) {
-                includePaths = new string[0];
+                includePaths = Array.Empty<string>();
             }
 
             if (additionalDefines == null) {
@@ -330,8 +330,7 @@ namespace AsarCLR {
         /// </summary>
         /// <returns>All Asar's errors.</returns>
         public static Asarerror[] geterrors() {
-            int length = 0;
-            RawAsarError* ptr = asar_geterrors(out length);
+            RawAsarError* ptr = asar_geterrors(out int length);
             return cleanerrors(ptr, length);
         }
 
@@ -340,8 +339,7 @@ namespace AsarCLR {
         /// </summary>
         /// <returns>All Asar's warnings.</returns>
         public static Asarerror[] getwarnings() {
-            int length = 0;
-            RawAsarError* ptr = asar_getwarnings(out length);
+            RawAsarError* ptr = asar_getwarnings(out int length);
             return cleanerrors(ptr, length);
         }
 
@@ -351,8 +349,7 @@ namespace AsarCLR {
         /// </summary>
         /// <returns>All prints</returns>
         public static string[] getprints() {
-            int length;
-            void** ptr = asar_getprints(out length);
+            void** ptr = asar_getprints(out int length);
 
             string[] output = new string[length];
 
@@ -446,8 +443,7 @@ namespace AsarCLR {
         /// <param name="error">If occurs any error, it will showed here.</param>
         /// <returns>Product.</returns>
         public static double math(string math, out string error) {
-            IntPtr err = IntPtr.Zero;
-            double value = asar_math(math, out err);
+            double value = asar_math(math, out IntPtr err);
 
             error = Marshal.PtrToStringAnsi(err);
             return value;
@@ -480,8 +476,7 @@ namespace AsarCLR {
         /// </summary>
         /// <returns>All Asar's blocks written to the ROM.</returns>
         public static Asarwrittenblock[] getwrittenblocks() {
-            int length = 0;
-            RawAsarWrittenBlock* ptr = asar_getwrittenblocks(out length);
+            RawAsarWrittenBlock* ptr = asar_getwrittenblocks(out int length);
             return CleanWrittenBlocks(ptr, length);
         }
 

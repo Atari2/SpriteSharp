@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace SpriteToolSuperSharp {
     class MeiMei {
@@ -14,9 +15,12 @@ namespace SpriteToolSuperSharp {
         public string Name;
         public MeiMeiRom PrevRom;
         public MeiMeiRom NowRom;
+        public MeiMeiRom Rom;
         public byte[] PrevEx = new byte[0x400];
         public byte[] NowEx = new byte[0x400];
         public string Sa1DefPath;
+        private string ErrMsg = "";
+
 
         public bool Patch(string patchname, ref MeiMeiRom rom) {
             if (!Asar.patch(patchname, ref rom.RomData)) {
@@ -48,24 +52,24 @@ namespace SpriteToolSuperSharp {
             }
         }
 
-        public void Run() {
+        public async Task Run() {
             if (!Asar.init()) {
                 Mixins.WaitAndExit("Error: Asar library is missing or couldn't be initialized, please redownload the tool or the dll.");
             }
             NowRom = new MeiMeiRom(Name);           // rom to use for reading values
-            MeiMeiRom rom = new MeiMeiRom(Name);    // actual rom to patch
-            bool returnvalue = ResizeData(out string ErrMsg, ref rom);
+            Rom = new MeiMeiRom(Name);               // actual rom to patch
+            bool returnvalue = await ResizeData();
             Asar.close();
 
             if (!returnvalue) {
                 Console.Out.WriteLine(ErrMsg);
                 Console.Out.WriteLine($"\n\nError occurred in MeiMei\n{ErrMsg}\nYour rom has reverted before Pixi insert");
-                rom.RomData = PrevRom.RomData;
-                rom.RomSize = PrevRom.RomSize;
+                Rom.RomData = PrevRom.RomData;
+                Rom.RomSize = PrevRom.RomSize;
             }
-            rom.Close();
+            Rom.Close();
         }
-        public bool ResizeData(out string ErrMsg, ref MeiMeiRom rom) {
+        public async Task<bool> ResizeData() {
             ErrMsg = "";
             if (ReadByte(PrevRom, 0x07730F) == 0x42) {
                 int addr = SNEStoPC((int)ReadLong(NowRom, 0x07730C), NowRom.Sa1());
@@ -94,7 +98,6 @@ namespace SpriteToolSuperSharp {
                         return !revert;
                     }
                     int sprAddrPC = SNEStoPC(sprAddrSNES, PrevRom.Sa1());
-                    Array.Fill<byte>(sprAllData, 0);
                     sprAllData[0] = ReadByte(NowRom, sprAddrPC);
                     int prevOfs = 1;
                     int nowOfs = 1;
@@ -155,7 +158,7 @@ namespace SpriteToolSuperSharp {
                                 bindata.Add(sprAllData[a]);
                             }
                         }
-                        File.WriteAllBytes(binFilename, bindata.ToArray());
+                        await File.WriteAllBytesAsync(binFilename, bindata.ToArray());
                         StringBuilder sr = new StringBuilder();
                         string binaryLabel = $"SpriteData{lv:X}";
                         string levelBankAddress = $"{PCtoSNES(0x077100 + lv, PrevRom.Sa1()):X06}";
@@ -176,12 +179,12 @@ namespace SpriteToolSuperSharp {
 
                         sr.Append($"\tprint \"Data pointer $\",hex(!oldDataPointer), \" : $\",hex(!newDataPointer)\n");
                         sr.Append($"\tprint \"Data size    $\",hex(!oldDataSize),\" : $\",hex({binaryLabel}_end-{binaryLabel}-1)\n");
-                        File.WriteAllText($"_tmp_{lv:X}.asm", sr.ToString());
+                        await File.WriteAllTextAsync($"_tmp_{lv:X}.asm", sr.ToString());
                         sr.Clear();
                         if (Debug) {
                             Console.Out.WriteLine($"Fixing sprite data for level {lv:X}");
                         }
-                        if (!Patch($"_tmp_{lv:X}.asm", ref rom)) {
+                        if (!Patch($"_tmp_{lv:X}.asm", ref Rom)) {
                             ErrMsg = "An error occurred when patching sprite data with asar.";
                             return false;
                         }

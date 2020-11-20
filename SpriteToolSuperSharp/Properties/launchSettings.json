@@ -2,7 +2,7 @@
   "profiles": {
     "SpriteToolSuperSharp": {
       "commandName": "Project",
-      "commandLineArgs": "cod.smc"
+      "commandLineArgs": "test.smc"
     }
   }
 }

@@ -1,11 +1,11 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 
 namespace SpriteToolSuperSharp {
 
@@ -129,63 +129,65 @@ namespace SpriteToolSuperSharp {
     }
 
     public class Tile {
-        [JsonProperty("X offset")]
+        [JsonInclude, JsonPropertyName("X offset")]
         public int XOff = 0;
-        [JsonProperty("Y offset")]
+        [JsonInclude, JsonPropertyName("Y offset")]
         public int YOff = 0;
-        [JsonProperty("map16 tile")]
+        [JsonInclude, JsonPropertyName("map16 tile")]
         public int TileNumber = 0;
-        [JsonProperty("Text")]
+        [JsonInclude, JsonPropertyName("Text")]
         public string Text = string.Empty;
     }
 
     public class Display {
-        [JsonProperty]
+        [JsonInclude]
         public string Description = string.Empty;
-        [JsonProperty]
+        [JsonInclude]
         public List<Tile> Tiles = new();
-        [JsonProperty]
+        [JsonInclude]
         public bool ExtraBit = false;
-        [JsonProperty]
+        [JsonInclude]
         public int X = 0;
-        [JsonProperty]
+        [JsonInclude]
         public int Y = 0;
-        [JsonProperty]
+        [JsonInclude]
         public string DisplayText = string.Empty;
-        [JsonProperty]
+        [JsonInclude]
         public bool UseText = false;
     }
 
     public class Collection {
+        [JsonInclude]
         public string Name = string.Empty;
+        [JsonInclude]
         public bool ExtraBit = false;
         [JsonIgnore]
         public byte[] Prop = new byte[12];
 
-        [JsonProperty("Extra Property Byte 1")]
-        byte prop1 { get => Prop[0]; set => Prop[0] = value; }
-        [JsonProperty("Extra Property Byte 2")]
-        byte prop2 { get => Prop[1]; set => Prop[1] = value; }
-        [JsonProperty("Extra Property Byte 3")]
-        byte prop3 { get => Prop[2]; set => Prop[2] = value; }
-        [JsonProperty("Extra Property Byte 4")]
-        byte prop4 { get => Prop[3]; set => Prop[3] = value; }
-        [JsonProperty("Extra Property Byte 5")]
-        byte prop5 { get => Prop[4]; set => Prop[4] = value; }
-        [JsonProperty("Extra Property Byte 6")]
-        byte prop6 { get => Prop[5]; set => Prop[5] = value; }
-        [JsonProperty("Extra Property Byte 7")]
-        byte prop7 { get => Prop[6]; set => Prop[6] = value; }
-        [JsonProperty("Extra Property Byte 8")]
-        byte prop8 { get => Prop[7]; set => Prop[7] = value; }
-        [JsonProperty("Extra Property Byte 9")]
-        byte prop9 { get => Prop[8]; set => Prop[8] = value; }
-        [JsonProperty("Extra Property Byte 10")]
-        byte prop10 { get => Prop[9]; set => Prop[9] = value; }
-        [JsonProperty("Extra Property Byte 11")]
-        byte prop11 { get => Prop[10]; set => Prop[10] = value; }
-        [JsonProperty("Extra Property Byte 12")]
-        byte prop12 { get => Prop[11]; set => Prop[11] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 1")]
+        public byte prop1 { get => Prop[0]; set => Prop[0] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 2")]
+        public byte prop2 { get => Prop[1]; set => Prop[1] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 3")]
+        public byte prop3 { get => Prop[2]; set => Prop[2] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 4")]
+        public byte prop4 { get => Prop[3]; set => Prop[3] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 5")]
+        public byte prop5 { get => Prop[4]; set => Prop[4] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 6")]
+        public byte prop6 { get => Prop[5]; set => Prop[5] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 7")]
+        public byte prop7 { get => Prop[6]; set => Prop[6] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 8")]
+        public byte prop8 { get => Prop[7]; set => Prop[7] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 9")]
+        public byte prop9 { get => Prop[8]; set => Prop[8] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 10")]
+        public byte prop10 { get => Prop[9]; set => Prop[9] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 11")]
+        public byte prop11 { get => Prop[10]; set => Prop[10] = value; }
+        [JsonInclude, JsonPropertyName("Extra Property Byte 12")]
+        public byte prop12 { get => Prop[11]; set => Prop[11] = value; }
 
     }
 
@@ -309,214 +311,213 @@ namespace SpriteToolSuperSharp {
 
     public class JsonSprite {
         public class J1656 {
-            [JsonProperty("Object Clipping")]
+            [JsonPropertyName("Object Clipping")]
             public byte objclip;
-            [JsonProperty("Can be jumped on")]
+            [JsonPropertyName("Can be jumped on")]
             public bool canbejumped;
-            [JsonProperty("Dies when jumped on")]
+            [JsonPropertyName("Dies when jumped on")]
             public bool diesjumped;
-            [JsonProperty("Hop in/kick shell")]
+            [JsonPropertyName("Hop in/kick shell")]
             public bool hopin;
-            [JsonProperty("Disappears in cloud of smoke")]
+            [JsonPropertyName("Disappears in cloud of smoke")]
             public bool disapp;
 
-            public byte ToByte() {
+            public static implicit operator byte(J1656 spr) {
                 byte tweak = 0;
-                tweak |= (byte)((objclip & 0x0F) << 0);
-                tweak |= canbejumped ? 0x10 : 0;
-                tweak |= diesjumped ? 0x20 : 0;
-                tweak |= hopin ? 0x40 : 0;
-                tweak |= disapp ? 0x80 : 0;
+                tweak |= (byte)((spr.objclip & 0x0F) << 0);
+                tweak |= spr.canbejumped ? 0x10 : 0;
+                tweak |= spr.diesjumped ? 0x20 : 0;
+                tweak |= spr.hopin ? 0x40 : 0;
+                tweak |= spr.disapp ? 0x80 : 0;
                 return tweak;
-
             }
         }
 
         public class J1662 {
-            [JsonProperty("Sprite Clipping")]
+            [JsonPropertyName("Sprite Clipping")]
             public byte sprclip;
-            [JsonProperty("USe shell as death frame")]
+            [JsonPropertyName("USe shell as death frame")]
             public bool deathframe;
-            [JsonProperty("Fall straight down when killed")]
+            [JsonPropertyName("Fall straight down when killed")]
             public bool strdown;
 
-            public byte ToByte() {
+            public static implicit operator byte(J1662 spr) {
                 byte tweak = 0;
-                tweak |= (byte)((sprclip & 0x3F) << 0);
-                tweak |= deathframe ? 0x40 : 0;
-                tweak |= strdown ? 0x80 : 0;
+                tweak |= (byte)((spr.sprclip & 0x3F) << 0);
+                tweak |= spr.deathframe ? 0x40 : 0;
+                tweak |= spr.strdown ? 0x80 : 0;
                 return tweak;
             }
         }
 
         public class J166e {
-            [JsonProperty("Use second graphics page")]
+            [JsonPropertyName("Use second graphics page")]
             public bool secondpage;
-            [JsonProperty("Palette")]
+            [JsonPropertyName("Palette")]
             public byte palette;
-            [JsonProperty("Disable fireball killing")]
+            [JsonPropertyName("Disable fireball killing")]
             public bool fireball;
-            [JsonProperty("Disable cape killing")]
+            [JsonPropertyName("Disable cape killing")]
             public bool cape;
-            [JsonProperty("Disable water splash")]
+            [JsonPropertyName("Disable water splash")]
             public bool splash;
-            [JsonProperty("Don't interact with Layer 2")]
+            [JsonPropertyName("Don't interact with Layer 2")]
             public bool lay2;
 
-            public byte ToByte() {
+            public static implicit operator byte(J166e spr) {
                 byte tweak = 0;
-                tweak |= secondpage ? 0x01 : 0;
-                tweak |= (byte)((palette & 0x07) << 1);
-                tweak |= fireball ? 0x10 : 0;
-                tweak |= cape ? 0x20 : 0;
-                tweak |= splash ? 0x40 : 0;
-                tweak |= lay2 ? 0x80 : 0;
+                tweak |= spr.secondpage ? 0x01 : 0;
+                tweak |= (byte)((spr.palette & 0x07) << 1);
+                tweak |= spr.fireball ? 0x10 : 0;
+                tweak |= spr.cape ? 0x20 : 0;
+                tweak |= spr.splash ? 0x40 : 0;
+                tweak |= spr.lay2 ? 0x80 : 0;
                 return tweak;
             }
         }
 
         public class J167a {
-            [JsonProperty("Don't disable cliping when starkilled")]
+            [JsonPropertyName("Don't disable cliping when starkilled")]
             public bool star;
-            [JsonProperty("Invincible to star/cape/fire/bounce blk.")]
+            [JsonPropertyName("Invincible to star/cape/fire/bounce blk.")]
             public bool blk;
-            [JsonProperty("Process when off screen")]
+            [JsonPropertyName("Process when off screen")]
             public bool offscr;
-            [JsonProperty("Don't change into shell when stunned")]
+            [JsonPropertyName("Don't change into shell when stunned")]
             public bool stunn;
-            [JsonProperty("Can't be kicked like shell")]
+            [JsonPropertyName("Can't be kicked like shell")]
             public bool kick;
-            [JsonProperty("Process interaction with Mario every frame")]
+            [JsonPropertyName("Process interaction with Mario every frame")]
             public bool everyframe;
-            [JsonProperty("Gives power-up when eaten by yoshi")]
+            [JsonPropertyName("Gives power-up when eaten by yoshi")]
             public bool powerup;
-            [JsonProperty("Don't use default interaction with Mario")]
+            [JsonPropertyName("Don't use default interaction with Mario")]
             public bool defaultint;
 
-            public byte ToByte() {
+            public static implicit operator byte(J167a spr) {
                 byte tweak = 0;
-                tweak |= star ? 0x01 : 0;
-                tweak |= blk ? 0x02 : 0;
-                tweak |= offscr ? 0x04 : 0;
-                tweak |= stunn ? 0x08 : 0;
-                tweak |= kick ? 0x10 : 0;
-                tweak |= everyframe ? 0x20 : 0;
-                tweak |= powerup ? 0x40 : 0;
-                tweak |= defaultint ? 0x80 : 0;
+                tweak |= spr.star ? 0x01 : 0;
+                tweak |= spr.blk ? 0x02 : 0;
+                tweak |= spr.offscr ? 0x04 : 0;
+                tweak |= spr.stunn ? 0x08 : 0;
+                tweak |= spr.kick ? 0x10 : 0;
+                tweak |= spr.everyframe ? 0x20 : 0;
+                tweak |= spr.powerup ? 0x40 : 0;
+                tweak |= spr.defaultint ? 0x80 : 0;
                 return tweak;
             }
         }
 
         public class J1686 {
-            [JsonProperty("Inedible")]
+            [JsonPropertyName("Inedible")]
             public bool inedible;
-            [JsonProperty("Stay in Yoshi's mouth")]
+            [JsonPropertyName("Stay in Yoshi's mouth")]
             public bool mouth;
-            [JsonProperty("Weird ground behaviour")]
+            [JsonPropertyName("Weird ground behaviour")]
             public bool ground;
-            [JsonProperty("Don't interact with other sprites")]
+            [JsonPropertyName("Don't interact with other sprites")]
             public bool nosprint;
-            [JsonProperty("Don't change direction if touched")]
+            [JsonPropertyName("Don't change direction if touched")]
             public bool direc;
-            [JsonProperty("Don't turn into coin when goal passed")]
+            [JsonPropertyName("Don't turn into coin when goal passed")]
             public bool goalpass;
-            [JsonProperty("Spawn a new sprite")]
+            [JsonPropertyName("Spawn a new sprite")]
             public bool newspr;
-            [JsonProperty("Don't interact with objects")]
+            [JsonPropertyName("Don't interact with objects")]
             public bool noobjint;
 
-            public byte ToByte() {
+            public static implicit operator byte(J1686 spr) {
                 byte tweak = 0;
-                tweak |= inedible ? 0x01 : 0;
-                tweak |= mouth ? 0x02 : 0;
-                tweak |= ground ? 0x04 : 0;
-                tweak |= nosprint ? 0x08 : 0;
-                tweak |= direc ? 0x10 : 0;
-                tweak |= goalpass ? 0x20 : 0;
-                tweak |= newspr ? 0x40 : 0;
-                tweak |= noobjint ? 0x80 : 0;
+                tweak |= spr.inedible ? 0x01 : 0;
+                tweak |= spr.mouth ? 0x02 : 0;
+                tweak |= spr.ground ? 0x04 : 0;
+                tweak |= spr.nosprint ? 0x08 : 0;
+                tweak |= spr.direc ? 0x10 : 0;
+                tweak |= spr.goalpass ? 0x20 : 0;
+                tweak |= spr.newspr ? 0x40 : 0;
+                tweak |= spr.noobjint ? 0x80 : 0;
                 return tweak;
             }
         }
 
         public class J190F {
-            [JsonProperty("Make platform passable from below")]
+            [JsonPropertyName("Make platform passable from below")]
             public bool below;
-            [JsonProperty("Don't erase when goal passed")]
+            [JsonPropertyName("Don't erase when goal passed")]
             public bool goal;
-            [JsonProperty("Can't be killed by sliding")]
+            [JsonPropertyName("Can't be killed by sliding")]
             public bool slidekill;
-            [JsonProperty("Takes 5 fireballs to kill")]
+            [JsonPropertyName("Takes 5 fireballs to kill")]
             public bool fivefire;
-            [JsonProperty("Can be jumped on with upwards Y speed")]
+            [JsonPropertyName("Can be jumped on with upwards Y speed")]
             public bool yupsp;
-            [JsonProperty("Death frame two tiles high")]
+            [JsonPropertyName("Death frame two tiles high")]
             public bool deathframe;
-            [JsonProperty("Don't turn into a coin with silver POW")]
+            [JsonPropertyName("Don't turn into a coin with silver POW")]
             public bool nosilver;
-            [JsonProperty("Don't get stuck in walls (carryable sprites)")]
+            [JsonPropertyName("Don't get stuck in walls (carryable sprites)")]
             public bool nostuck;
 
-            public byte ToByte() {
+            public static implicit operator byte(J190F spr) {
                 byte tweak = 0;
-                tweak |= below ? 0x01 : 0;
-                tweak |= goal ? 0x02 : 0;
-                tweak |= slidekill ? 0x04 : 0;
-                tweak |= fivefire ? 0x08 : 0;
-                tweak |= yupsp ? 0x10 : 0;
-                tweak |= deathframe ? 0x20 : 0;
-                tweak |= nosilver ? 0x40 : 0;
-                tweak |= nostuck ? 0x80 : 0;
+                tweak |= spr.below ? 0x01 : 0;
+                tweak |= spr.goal ? 0x02 : 0;
+                tweak |= spr.slidekill ? 0x04 : 0;
+                tweak |= spr.fivefire ? 0x08 : 0;
+                tweak |= spr.yupsp ? 0x10 : 0;
+                tweak |= spr.deathframe ? 0x20 : 0;
+                tweak |= spr.nosilver ? 0x40 : 0;
+                tweak |= spr.nostuck ? 0x80 : 0;
                 return tweak;
             }
         }
 
-        [JsonProperty("$1656")]
+        [JsonInclude, JsonPropertyName("$1656")]
         public J1656 t1656;
 
-        [JsonProperty("$1662")]
+        [JsonInclude, JsonPropertyName("$1662")]
         public J1662 t1662;
 
-        [JsonProperty("$166E")]
+        [JsonInclude, JsonPropertyName("$166E")]
         public J166e t166e;
 
-        [JsonProperty("$167A")]
+        [JsonInclude, JsonPropertyName("$167A")]
         public J167a t167a;
 
-        [JsonProperty("$1686")]
+        [JsonInclude, JsonPropertyName("$1686")]
         public J1686 t1686;
 
-        [JsonProperty("$190F")]
+        [JsonPropertyName("$190F")]
         public J190F t190f;
 
-        [JsonProperty("AsmFile")]
+        [JsonInclude, JsonPropertyName("AsmFile")]
         public string asmfile;
 
-        [JsonProperty("ActLike")]
+        [JsonInclude, JsonPropertyName("ActLike")]
         public byte actlike;
 
-        [JsonProperty("Type")]
+        [JsonInclude, JsonPropertyName("Type")]
         public byte type;
 
-        [JsonProperty("Extra Property Byte 1")]
+        [JsonInclude, JsonPropertyName("Extra Property Byte 1")]
         public byte extraprop1;
 
-        [JsonProperty("Extra Property Byte 2")]
+        [JsonInclude, JsonPropertyName("Extra Property Byte 2")]
         public byte extraprop2;
 
-        [JsonProperty("Additional Byte Count (extra bit clear)")]
+        [JsonInclude, JsonPropertyName("Additional Byte Count (extra bit clear)")]
         public int addbcountclear;
 
-        [JsonProperty("Additional Byte Count (extra bit set)")]
+        [JsonInclude, JsonPropertyName("Additional Byte Count (extra bit set)")]
         public int addbcountset;
 
-        [JsonProperty("Map16")]
+        [JsonInclude, JsonPropertyName("Map16")]
         public string map16;
 
-        [JsonProperty("Displays")]
+        [JsonInclude, JsonPropertyName("Displays")]
         public List<Display> displays;
 
-        [JsonProperty("Collection")]
+        [JsonInclude, JsonPropertyName("Collection")]
         public List<Collection> collections;
 
     }
@@ -648,7 +649,11 @@ namespace SpriteToolSuperSharp {
 
         public void ReadJson(TextWriter stream) {
             try {
-                JsonSprite root = JsonConvert.DeserializeObject<JsonSprite>(File.ReadAllText(CfgFile));
+                var options = new JsonSerializerOptions() {
+                    IncludeFields = true,
+                };
+                var readOnlySpan = new ReadOnlySpan<byte>(File.ReadAllBytes(CfgFile));
+                JsonSprite root = JsonSerializer.Deserialize<JsonSprite>(readOnlySpan, options);
                 AsmFile = Mixins.AppendToDir(CfgFile, root.asmfile);
                 Table.ActLike = root.actlike;
                 Table.Type = root.type;
@@ -664,12 +669,12 @@ namespace SpriteToolSuperSharp {
                         ExtraByteCount = 12;
 
                     // do the things with the tweaks here
-                    Table.Tweak[0] = root.t1656.ToByte();
-                    Table.Tweak[1] = root.t1662.ToByte();
-                    Table.Tweak[2] = root.t166e.ToByte();
-                    Table.Tweak[3] = root.t167a.ToByte();
-                    Table.Tweak[4] = root.t1686.ToByte();
-                    Table.Tweak[5] = root.t190f.ToByte();
+                    Table.Tweak[0] = root.t1656;
+                    Table.Tweak[1] = root.t1662;
+                    Table.Tweak[2] = root.t166e;
+                    Table.Tweak[3] = root.t167a;
+                    Table.Tweak[4] = root.t1686;
+                    Table.Tweak[5] = root.t190f;
 
 
                     MapData = Map16.FromBytes(Convert.FromBase64String(root.map16));

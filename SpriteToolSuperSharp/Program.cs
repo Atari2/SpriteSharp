@@ -1,10 +1,11 @@
 ﻿using AsarCLR;
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace SpriteToolSuperSharp {
     class Program {
-        static void Main(string[] args) {
+        static async Task Main(string[] args) {
             try {
                 if (!System.IO.File.Exists("asar.dll")) {
                     string resourceName = "SpriteToolSuperSharp.asar.dll";
@@ -15,7 +16,7 @@ namespace SpriteToolSuperSharp {
                     Mixins.WaitAndExit("Error: Asar library is missing or couldn't be initialized, please redownload the tool or add the dll.");
                 }
                 Pixi pixi = new Pixi(args);
-                pixi.Run();
+                await pixi.Run();
             } catch (Exception e) {
                 Mixins.WaitAndExit($"Unexpected error occurred: {e.Message}\n\t{e.StackTrace}");
             }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace SpriteToolSuperSharp {
     class Pixi {
@@ -20,7 +21,7 @@ namespace SpriteToolSuperSharp {
             Opts = new ToolOptions(CmdOpts, out MeiMei, out Paths);
             Rom = new Rom(CmdOpts.GetRomFile());
         }
-        public void Run() {
+        async public Task Run() {
             if (!Rom.RunChecks(out string errors)) {
                 Mixins.WaitAndExit(errors);
             }
@@ -37,16 +38,16 @@ namespace SpriteToolSuperSharp {
 
             // populate sprite list
             try {
-                PopulateSpriteList(Paths.ASMPaths, Paths.ASMPaths[Defines.FileType.List], Opts.Output);
+                await PopulateSpriteList(Paths.ASMPaths, Paths.ASMPaths[Defines.FileType.List], Opts.Output);
             } catch (Exception e) {
                 Mixins.WaitAndExit(e.Message);
             }
 
             // clean old rom
-            CleanPreviousRuns(Paths.ASMPaths[Defines.FileType.Asm], Opts.AsmDir);
+            await CleanPreviousRuns(Paths.ASMPaths[Defines.FileType.Asm], Opts.AsmDir);
 
             // create shared patch
-            CreateSharedPatch(Paths.ASMPaths[Defines.FileType.Routines]);
+            await CreateSharedPatch(Paths.ASMPaths[Defines.FileType.Routines]);
 
             // patch all types of sprites
             PatchSprites(Data.ExtraDefines, Data.SprLists[Defines.ListType.Sprite], Opts.PerLevel ? Defines.MaxSprCount : 0x100);
@@ -54,10 +55,10 @@ namespace SpriteToolSuperSharp {
             PatchSprites(Data.ExtraDefines, Data.SprLists[Defines.ListType.Extended], Defines.SprCount);
 
             // create binary tables
-            CreateBinaryTables();
+            await CreateBinaryTables();
 
             // create mwt, mw2, ssc, s16
-            CreateExtFiles();
+            await CreateExtFiles();
 
             // apply main.asm, cluster.asm, extended.asm
             Patch(Paths.ASMPaths[Defines.FileType.Asm] + "main.asm");
@@ -79,7 +80,7 @@ namespace SpriteToolSuperSharp {
             Asar.close();
             if (!Opts.DisableMeiMei) {
                 MeiMei.Instance.ConfigureSa1Def(Opts.AsmDirPath + "/sa1def.asm");
-                MeiMei.Instance.Run();
+                await MeiMei.Instance.Run();
             }
 
             if (Opts.LMHandle) {
@@ -87,8 +88,8 @@ namespace SpriteToolSuperSharp {
                     Mixins.WaitAndExit("Something went wrong while posting the reload rom message to Lunar Magic, reload the ROM manually");
                 }
             } else {
-                Console.Out.WriteLine("Press any key to exit...");
-                Console.ReadKey();
+                // Console.Out.WriteLine("Press any key to exit...");
+                // Console.ReadKey();
             }
         }
         private void Patch(string patchname) {
@@ -117,12 +118,12 @@ namespace SpriteToolSuperSharp {
             string tofile = $"!PerLevel = {(Opts.PerLevel ? 1 : 0)}\n!Disable255SpritesPerLevel = {(Opts.Disable255SpritePerLevel ? 1 : 0)}";
             File.WriteAllText(configpath, tofile);
         }
-        private void PopulateSpriteList(Dictionary<Defines.FileType, string> paths, string listName, TextWriter output) {
+        private async Task PopulateSpriteList(Dictionary<Defines.FileType, string> paths, string listName, TextWriter output) {
             foreach (var t in Data.SprLists.Keys) {
                 Data.SprLists[t] = Data.SprLists[t].Select(x => new Sprite()).ToArray();
             }
             Defines.ListType type = Defines.ListType.Sprite;
-            List<string> lines = File.ReadAllLines(listName).Select(x => x.Trim()).ToList();
+            List<string> lines = (await File.ReadAllLinesAsync(listName)).Select(x => x.Trim()).ToList();
             lines.RemoveAll(x => string.IsNullOrWhiteSpace(x));
             foreach (var (line, i) in lines.WithIndex()) {
                 try {
@@ -229,7 +230,7 @@ namespace SpriteToolSuperSharp {
                 }
             }
         }
-        private void CleanPreviousRuns(string pathname, string asmdir) {
+        private async Task CleanPreviousRuns(string pathname, string asmdir) {
             int pixi = Rom.SnesToPc(0x02FFE2);
             int sprtool = Rom.SnesToPc(Rom.PointerFromSnes(0x02A963).Addr() - 3);
             if (Encoding.UTF8.GetString(Rom.RomData[pixi..(pixi + 4)]) == "STSD") {
@@ -316,7 +317,7 @@ namespace SpriteToolSuperSharp {
                                 sr.Append($"autoclean ${extendedptr.Addr():X06}\n");
                         }
                 }
-                File.WriteAllText(cleanpatch, sr.ToString());
+                await File.WriteAllTextAsync(cleanpatch, sr.ToString());
                 Patch(cleanpatch);
             } else if (Encoding.UTF8.GetString(Rom.RomData[sprtool..(sprtool + 3)]) == "MDK") {
                 Patch(pathname + "spritetool_clean.asm");
@@ -413,20 +414,20 @@ namespace SpriteToolSuperSharp {
                 }
             }
         }
-        private void CreateBinaryTables() {
+        private async Task CreateBinaryTables() {
             string asmpath = Paths.ASMPaths[Defines.FileType.Asm];
-            File.WriteAllBytes(asmpath + "_versionflag.bin", Data.VersionFlag);
+            await File.WriteAllBytesAsync(asmpath + "_versionflag.bin", Data.VersionFlag);
             if (Opts.PerLevel) {
-                File.WriteAllBytes(asmpath + "_PerLevelLvlPtrs.bin", Data.PlsLevelPtrs);
+                await File.WriteAllBytesAsync(asmpath + "_PerLevelLvlPtrs.bin", Data.PlsLevelPtrs);
                 if (Data.PlsDataAddr == 0) {
                     byte[] dummy = new byte[] { 0xFF };
-                    File.WriteAllBytes(asmpath + "_PerLevelSprPtrs.bin", dummy);
-                    File.WriteAllBytes(asmpath + "_PerLevelT.bin", dummy);
-                    File.WriteAllBytes(asmpath + "_PerLevelCustomPtrTable.bin", dummy);
+                    await File.WriteAllBytesAsync(asmpath + "_PerLevelSprPtrs.bin", dummy);
+                    await File.WriteAllBytesAsync(asmpath + "_PerLevelT.bin", dummy);
+                    await File.WriteAllBytesAsync(asmpath + "_PerLevelCustomPtrTable.bin", dummy);
                 } else {
-                    File.WriteAllBytes(asmpath + "_PerLevelSprPtrs.bin", Data.PlsSpritePtr[0..Data.PlsSpritePtrAddr]);
-                    File.WriteAllBytes(asmpath + "_PerLevelT.bin", Data.PlsData[0..Data.PlsDataAddr]);
-                    File.WriteAllBytes(asmpath + "_PerLevelCustomPtrTable.bin", Data.PlsPointers[0..Data.PlsDataAddr]);
+                    await File.WriteAllBytesAsync(asmpath + "_PerLevelSprPtrs.bin", Data.PlsSpritePtr[0..Data.PlsSpritePtrAddr]);
+                    await File.WriteAllBytesAsync(asmpath + "_PerLevelT.bin", Data.PlsData[0..Data.PlsDataAddr]);
+                    await File.WriteAllBytesAsync(asmpath + "_PerLevelCustomPtrTable.bin", Data.PlsPointers[0..Data.PlsDataAddr]);
                 }
                 Mixins.WriteLongTable(Data.SprLists[Defines.ListType.Sprite][0x2000..0x2100], asmpath + "_DefaultTables.bin");
             } else {
@@ -439,19 +440,19 @@ namespace SpriteToolSuperSharp {
             while (customstatusptrs.Count < 0x100 * 15) {
                 for (int i = 0; i < 5; i++) customstatusptrs.AddRange(new Pointer().ToBytes());
             }
-            File.WriteAllBytes(asmpath + "_CustomStatusPtr.bin", customstatusptrs.ToArray());
+            await File.WriteAllBytesAsync(asmpath + "_CustomStatusPtr.bin", customstatusptrs.ToArray());
 
             List<byte> otherptrs = new();
             Data.SprLists[Defines.ListType.Cluster].ToList().ForEach(x => otherptrs.AddRange((byte[])x.Table.Main));
-            File.WriteAllBytes(asmpath + "_ClusterPtr.bin", otherptrs.ToArray());
+            await File.WriteAllBytesAsync(asmpath + "_ClusterPtr.bin", otherptrs.ToArray());
 
             otherptrs.Clear();
             Data.SprLists[Defines.ListType.Extended].ToList().ForEach(x => otherptrs.AddRange((byte[])x.Table.Main));
-            File.WriteAllBytes(asmpath + "_ExtendedPtr.bin", otherptrs.ToArray());
+            await File.WriteAllBytesAsync(asmpath + "_ExtendedPtr.bin", otherptrs.ToArray());
 
             otherptrs.Clear();
             Data.SprLists[Defines.ListType.Extended].ToList().ForEach(x => otherptrs.AddRange((byte[])x.ExtCapePtr));
-            File.WriteAllBytes(asmpath + "_ExtendedCapePtr.bin", otherptrs.ToArray());
+            await File.WriteAllBytesAsync(asmpath + "_ExtendedCapePtr.bin", otherptrs.ToArray());
 
             byte[] extrabytes = new byte[0x200];
             for (int i = 0; i < 0x100; i++) {
@@ -470,10 +471,10 @@ namespace SpriteToolSuperSharp {
                     }
                 }
             }
-            File.WriteAllBytes(asmpath + "_CustomSize.bin", extrabytes);
+            await File.WriteAllBytesAsync(asmpath + "_CustomSize.bin", extrabytes);
 
         }
-        private void CreateExtFiles() {
+        private async Task CreateExtFiles() {
             Data.Map.AddRange(new Map16[Defines.Map16Size].ToList().Select(x => new Map16()));
             Dictionary<Defines.ExtType, FileStream> streams = new() {
                 { Defines.ExtType.ExtMW2, Mixins.OpenSubfile(Rom.Filename, "mw2") },
@@ -486,9 +487,9 @@ namespace SpriteToolSuperSharp {
                     if (type == Defines.ExtType.ExtS16) {
                         Data.Map.AddRange(Map16.FromBytes(File.ReadAllBytes(ext)));
                     } else if (type == Defines.ExtType.ExtMW2) {
-                        streams[type].Write(File.ReadAllBytes(ext).AsSpan()[0..^1]); // to avoid copying over the 0xFF
+                        await streams[type].WriteAsync((await File.ReadAllBytesAsync(ext)).ToArray().AsMemory()[0..^1]); // to avoid copying over the 0xFF
                     } else {
-                        streams[type].Write(File.ReadAllBytes(ext));
+                        await streams[type].WriteAsync((await File.ReadAllBytesAsync(ext)));
                     }
                 } else if (type == Defines.ExtType.ExtMW2) {
                     streams[type].WriteByte(0);
@@ -526,7 +527,7 @@ namespace SpriteToolSuperSharp {
                                 }
                             }
                             ssc.Append('\n');
-                            streams[Defines.ExtType.ExtSSC].Write(Encoding.UTF8.GetBytes(ssc.ToString()));
+                            await streams[Defines.ExtType.ExtSSC].WriteAsync(Encoding.UTF8.GetBytes(ssc.ToString()));
                         }
                         foreach (var (coll, index) in spr.Collections.WithIndex()) {
                             Defines.ExtType mw2 = Defines.ExtType.ExtMW2;
@@ -536,17 +537,17 @@ namespace SpriteToolSuperSharp {
                             streams[mw2].WriteByte(0x70);
                             streams[mw2].WriteByte((byte)spr.Number);
                             int bcount = (coll.ExtraBit ? spr.ExtraByteCount : spr.ByteCount);
-                            streams[mw2].Write(coll.Prop, 0, bcount);
+                            await streams[mw2].WriteAsync(coll.Prop, 0, bcount);
                             if (index == 0) {
-                                streams[mwt].Write(Encoding.UTF8.GetBytes($"{spr.Number:X02}\t{coll.Name}\n"));
+                                await streams[mwt].WriteAsync(Encoding.UTF8.GetBytes($"{spr.Number:X02}\t{coll.Name}\n"));
                             } else {
-                                streams[mwt].Write(Encoding.UTF8.GetBytes($"\t{coll.Name}\n"));
+                                await streams[mwt].WriteAsync(Encoding.UTF8.GetBytes($"\t{coll.Name}\n"));
                             }
                         }
                     }
                 }
             }
-            streams[Defines.ExtType.ExtS16].Write(Data.Map.Aggregate(new List<byte>(), (acc, x) => acc.Concat(x.ToBytes()).ToList()).ToArray());
+            await streams[Defines.ExtType.ExtS16].WriteAsync(Data.Map.Aggregate(new List<byte>(), (acc, x) => acc.Concat(x.ToBytes()).ToList()).ToArray());
             streams[Defines.ExtType.ExtMW2].WriteByte(0xFF);
             foreach (var stream in streams.Values) {
                 stream.Flush();
@@ -646,7 +647,7 @@ namespace SpriteToolSuperSharp {
                 File.WriteAllText(extmod, contents + toappend);
             }
         }
-        private static void CreateSharedPatch(string routinepath) {
+        private static async Task CreateSharedPatch(string routinepath) {
             StringBuilder sr = new StringBuilder();
             sr.Append("macro include_once(target, base, offset)\n\tif !<base> != 1\n\t\t!<base> = 1\n\t\tpushpc\n\t\tif read3(<offset>+$03E05C) != $FFFFFF\n");
             sr.Append("\t\t\t<base> = read3(<offset>+$03E05C)\n\t\telse\n\t\t\tfreecode cleaned\n\t\t\t\t#<base>:\n\t\t\t\t");
@@ -664,7 +665,7 @@ namespace SpriteToolSuperSharp {
                 sr.Append($"!{name} = 0\nmacro {name}()\n\t%include_once(\"{routinepath}{name}.asm\", {name}, ${(count * 3):X02})\n\tJSL {name}\nendmacro\n");
             }
             Console.Out.WriteLine($"{routines.Length} Shared routines registered in \"{routinepath}\"");
-            File.WriteAllText("shared.asm", sr.ToString());
+            await File.WriteAllTextAsync("shared.asm", sr.ToString());
         }
         private static List<string> ListExtraASM(string asmpath) {
             List<string> files = new();

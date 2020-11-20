@@ -3,7 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SpriteToolSuperSharp {
@@ -88,8 +91,8 @@ namespace SpriteToolSuperSharp {
                     Mixins.WaitAndExit("Something went wrong while posting the reload rom message to Lunar Magic, reload the ROM manually");
                 }
             } else {
-                // Console.Out.WriteLine("Press any key to exit...");
-                // Console.ReadKey();
+                Console.Out.WriteLine("Press any key to exit...");
+                Console.ReadKey();
             }
         }
         private void Patch(string patchname) {
@@ -225,8 +228,11 @@ namespace SpriteToolSuperSharp {
                         Data.SprLists[type][sprid].Table.Init = new Pointer(Defines.InitPtr + 2 * sprid);
                         Data.SprLists[type][sprid].Table.Main = new Pointer(Defines.MainPtr + 2 * sprid);
                     }
+                } catch (Exception e) when (e is JsonException || e is NotSupportedException) {
+                    Console.WriteLine($"Error was thrown while parsing JSON file, error was {e.Message}");
                 } catch (Exception e) {
-                    Console.WriteLine(e.Message);
+                    Mixins.WaitAndExit("Uncaught exception occurred when parsing sprites, contact the developer. More details below: \n" +
+                        $"{e.Message}\n\t{e.StackTrace}");
                 }
             }
         }
@@ -438,7 +444,7 @@ namespace SpriteToolSuperSharp {
             int end = start + 0x100;
             Data.SprLists[Defines.ListType.Sprite][start..end].ToList().ForEach(x => customstatusptrs.AddRange(x.StatusPtrsToBytes()));
             while (customstatusptrs.Count < 0x100 * 15) {
-                for (int i = 0; i < 5; i++) customstatusptrs.AddRange(new Pointer().ToBytes());
+                for (int i = 0; i < 5; i++) customstatusptrs.AddRange(new Pointer(0x018021).ToBytes());
             }
             await File.WriteAllBytesAsync(asmpath + "_CustomStatusPtr.bin", customstatusptrs.ToArray());
 
@@ -475,7 +481,7 @@ namespace SpriteToolSuperSharp {
 
         }
         private async Task CreateExtFiles() {
-            Data.Map.AddRange(new Map16[Defines.Map16Size].ToList().Select(x => new Map16()));
+            Data.Map.AddRange(new Map16[Defines.Map16Size]);
             Dictionary<Defines.ExtType, FileStream> streams = new() {
                 { Defines.ExtType.ExtMW2, Mixins.OpenSubfile(Rom.Filename, "mw2") },
                 { Defines.ExtType.ExtMWT, Mixins.OpenSubfile(Rom.Filename, "mwt") },
@@ -487,7 +493,7 @@ namespace SpriteToolSuperSharp {
                     if (type == Defines.ExtType.ExtS16) {
                         Data.Map.AddRange(Map16.FromBytes(File.ReadAllBytes(ext)));
                     } else if (type == Defines.ExtType.ExtMW2) {
-                        await streams[type].WriteAsync((await File.ReadAllBytesAsync(ext)).ToArray().AsMemory()[0..^1]); // to avoid copying over the 0xFF
+                        await streams[type].WriteAsync((await File.ReadAllBytesAsync(ext)).AsMemory()[0..^1]); // to avoid copying over the 0xFF
                     } else {
                         await streams[type].WriteAsync((await File.ReadAllBytesAsync(ext)));
                     }
@@ -510,14 +516,14 @@ namespace SpriteToolSuperSharp {
                         foreach (var dis in spr.Displays) {
                             StringBuilder ssc = new StringBuilder();
                             int refd = (dis.Y * 0x1000) + (dis.X * 0x100) + 0x20 + (dis.ExtraBit ? 0x10 : 0);
-                            if (dis.Description != string.Empty) {
+                            if (dis.Description != null) {
                                 ssc.Append($"{i:X02} {refd:X04} {dis.Description}\n");
                             } else {
                                 ssc.Append($"{i:X02} {refd:X04} {spr.AsmFile}\n");
                             }
                             ssc.Append($"{i:X02} {refd + 2:X04}");
                             foreach (Tile t in dis.Tiles) {
-                                if (t.Text != string.Empty) {
+                                if (t.Text is not null) {
                                     ssc.Append($" 0,0,*{t.Text}*");
                                     break;
                                 } else {
@@ -547,7 +553,10 @@ namespace SpriteToolSuperSharp {
                     }
                 }
             }
-            await streams[Defines.ExtType.ExtS16].WriteAsync(Data.Map.Aggregate(new List<byte>(), (acc, x) => acc.Concat(x.ToBytes()).ToList()).ToArray());
+            var count = Data.Map.Count * Unsafe.SizeOf<Map16>();
+            var buffer = new byte[count];
+            CollectionsMarshal.AsSpan(Data.Map).CopyTo(MemoryMarshal.Cast<byte, Map16>(buffer));
+            await streams[Defines.ExtType.ExtS16].WriteAsync(buffer);
             streams[Defines.ExtType.ExtMW2].WriteByte(0xFF);
             foreach (var stream in streams.Values) {
                 stream.Flush();
@@ -578,11 +587,11 @@ namespace SpriteToolSuperSharp {
                 {"goal", new Pointer(0x000000) },
             };
             var prints = Asar.getprints();
-            prints = prints.Select(x => x.Trim().ToLower()).ToArray();
-            output?.WriteLine($"{spr.AsmFile}");
+            var low_prints = prints.Select(x => x.Trim().ToLower()).ToArray();
+            output?.WriteLine($"__________________________________\n{spr.AsmFile}");
             if (prints.Length > 2)
                 output?.WriteLine("Prints:\n");
-            foreach (var print in prints) {
+            foreach (var (print, i) in low_prints.WithIndex()) {
                 string k = spr.StatusPointers.Keys.FirstOrDefault(x => print.StartsWith(x));
                 if (k == default) {
                     if (print.StartsWith("VERG")) {
@@ -590,16 +599,14 @@ namespace SpriteToolSuperSharp {
                             Mixins.WaitAndExit($"Version Guard failed on {spr.AsmFile}\n");
                         }
                     } else
-                        output?.WriteLine($"\t{print}\n");
+                        output?.WriteLine($"{prints[i]}");
                 } else {
                     string digits = print[k.Length..].Trim();
                     spr.StatusPointers[k] = new Pointer(Convert.ToInt32(digits, 16));
                 }
             }
-            spr.Table.Init = spr.StatusPointers["init"];
-            spr.Table.Main = spr.StatusPointers["main"];
-            spr.StatusPointers.Remove("init");
-            spr.StatusPointers.Remove("main");
+            spr.StatusPointers.Remove("init", out spr.Table.Init);
+            spr.StatusPointers.Remove("main", out spr.Table.Main);
             if (spr.Table.Init.IsEmpty() && spr.Table.Main.IsEmpty()) {
                 Mixins.WaitAndExit($"Sprite {spr.AsmFile} had neither INIT nor MAIN defined in its file, insertion has been aborted");
             }
@@ -611,11 +618,11 @@ namespace SpriteToolSuperSharp {
             } else {
                 spr.StatusPointers.Clear();
             }
-            output?.WriteLine($"\tINIT: {spr.Table.Init.Addr():X06}\n\t{spr.Table.Main.Addr():X06}");
+            output?.WriteLine($"\tINIT: ${spr.Table.Init.Addr():X06}\n\tMAIN: ${spr.Table.Main.Addr():X06}");
             if (spr.SprType == 0) {
-                spr.StatusPointers.ToList().ForEach(v => output?.WriteLine($"\t{v.Key.ToUpper()}: {v.Value.Addr():X06}"));
+                spr.StatusPointers.ToList().ForEach(v => output?.WriteLine($"\t{v.Key.ToUpper()}: ${v.Value.Addr():X06}"));
             } else if (spr.SprType == 1) {
-                output?.WriteLine($"\tCAPE: {spr.ExtCapePtr.Addr():X06}");
+                output?.WriteLine($"\tCAPE: ${spr.ExtCapePtr.Addr():X06}");
             }
         }
         private static void CleanTempFiles(string path, bool perlevel) {

@@ -1,0 +1,9 @@
+	LDA !D8,x
+	STA $98
+	LDA !14D4,x
+	STA $99
+	LDA !E4,x
+	STA $9A
+	LDA !14E0,x
+	STA $9B
+RTL

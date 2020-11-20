@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 
 namespace SpriteToolSuperSharp {
 
@@ -30,10 +31,9 @@ namespace SpriteToolSuperSharp {
         }
 
         public void Close() {
-            byte[] data = new byte[HeaderSize + RomSize];
-            Array.Copy(HeaderData, data, HeaderSize);
-            Array.Copy(RomData, 0, data, HeaderSize, RomSize);
-            File.WriteAllBytes(Filename, data);
+            using var sr = new FileStream(Filename, FileMode.Truncate);
+            sr.Write(HeaderData);
+            sr.Write(RomData);
         }
 
         public int PcToSnes(int address) {
@@ -88,12 +88,10 @@ namespace SpriteToolSuperSharp {
         }
 
     }
-    class Pointer {
-        public byte LowByte { get; private set; } = Defines.RTLLow;
-        public byte HighByte { get; private set; } = Defines.RTLHigh;
-        public byte BankByte { get; private set; } = Defines.RTLBank;
-
-        public Pointer() { }
+    struct Pointer {
+        public byte LowByte { get; private set; }
+        public byte HighByte { get; private set; }
+        public byte BankByte { get; private set; }
         public Pointer(int snes) {
             LowByte = (byte)(snes & 0xFF);
             HighByte = (byte)((snes >> 8) & 0xFF);
@@ -128,32 +126,32 @@ namespace SpriteToolSuperSharp {
         }
     }
 
-    public class Tile {
+    public struct Tile {
         [JsonInclude, JsonPropertyName("X offset")]
-        public int XOff = 0;
+        public int XOff;
         [JsonInclude, JsonPropertyName("Y offset")]
-        public int YOff = 0;
+        public int YOff;
         [JsonInclude, JsonPropertyName("map16 tile")]
-        public int TileNumber = 0;
+        public int TileNumber;
         [JsonInclude, JsonPropertyName("Text")]
-        public string Text = string.Empty;
+        public string Text;
     }
 
-    public class Display {
+    public struct Display {
         [JsonInclude]
-        public string Description = string.Empty;
+        public string Description;
         [JsonInclude]
-        public List<Tile> Tiles = new();
+        public List<Tile> Tiles;
         [JsonInclude]
-        public bool ExtraBit = false;
+        public bool ExtraBit;
         [JsonInclude]
-        public int X = 0;
+        public int X;
         [JsonInclude]
-        public int Y = 0;
+        public int Y;
         [JsonInclude]
-        public string DisplayText = string.Empty;
+        public string DisplayText;
         [JsonInclude]
-        public bool UseText = false;
+        public bool UseText;
     }
 
     public class Collection {
@@ -191,11 +189,9 @@ namespace SpriteToolSuperSharp {
 
     }
 
-    class Map8x8 {
-        public byte Tile = 0;
-        public byte Prop = 0;
-
-        public Map8x8() { }
+    struct Map8x8 {
+        public byte Tile;
+        public byte Prop;
         public Map8x8(byte tile, byte prop) {
             Tile = tile;
             Prop = prop;
@@ -205,20 +201,15 @@ namespace SpriteToolSuperSharp {
         }
     }
 
-    class Map16 {
-        public Map8x8 TopLeft = new();
-        public Map8x8 BotLeft = new();
-        public Map8x8 TopRight = new();
-        public Map8x8 BotRight = new();
-
-        public Map16() { }
-        public Map16(byte[] values) {
-            TopLeft = new Map8x8(values[0], values[1]);
-            BotLeft = new Map8x8(values[2], values[3]);
-            TopRight = new Map8x8(values[4], values[5]);
-            BotRight = new Map8x8(values[6], values[7]);
+    struct Map16 {
+        public Map8x8 TopLeft;
+        public Map8x8 BotLeft;
+        public Map8x8 TopRight;
+        public Map8x8 BotRight;
+        public Map16(ReadOnlySpan<byte> values) {
+            this = MemoryMarshal.Read<Map16>(values);
         }
-        public static List<Map16> FromBytes(byte[] data) {
+        public static List<Map16> FromBytes(ReadOnlySpan<byte> data) {
             List<Map16> maps = new List<Map16>(data.Length / 8);
             for (int i = 0; i < data.Length; i += 8) {
                 maps.Add(new Map16(data[i..(i + 8)]));
@@ -281,8 +272,8 @@ namespace SpriteToolSuperSharp {
         public byte Type = 0;
         public byte ActLike = 0;
         public byte[] Tweak = new byte[6];
-        public Pointer Init = new();
-        public Pointer Main = new();
+        public Pointer Init = new(0x018021);
+        public Pointer Main = new(0x018021);
         public byte[] Extra = new byte[2];
 
         public static bool IsEmpty(List<Sprite> sprites) {
@@ -528,7 +519,7 @@ namespace SpriteToolSuperSharp {
         public int Level = 0x200;
         public SpriteTable Table = new();
         public Dictionary<string, Pointer> StatusPointers = new();
-        public Pointer ExtCapePtr = new();
+        public Pointer ExtCapePtr = new(0x018021);
         public int ByteCount = 0;
         public int ExtraByteCount = 0;
 

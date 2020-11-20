@@ -48,7 +48,7 @@ namespace SpriteToolSuperSharp {
         public static readonly int MainPtr = 0x0185CC;
         public static readonly string TempSprFile = "spr_temp.asm";
         public static readonly int SprCount = 0x80;
-        public static readonly int ToolVersion = 0x30;
+        public static readonly int ToolVersion = 0x31;
         public static readonly int MaxRomSize = 16 * 1024 * 1024;
         public static readonly byte RTLBank = 0x01;
         public static readonly byte RTLHigh = 0x80;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
     class CommandLineOptions {
         private string RomFile;
         readonly List<string> Opts = new List<string>();

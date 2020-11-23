@@ -1,5 +1,5 @@
 ﻿using System;
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
     public class ToolException : Exception {
         public ToolException() { }
         public ToolException(string message) : base(message) { }

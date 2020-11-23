@@ -4,13 +4,13 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
 
     class Program {
         static async Task Main(string[] args) {
             try {
                 if (!File.Exists("asar.dll")) {
-                    string resourceName = "SpriteToolSuperSharp.asar.dll";
+                    string resourceName = "SpriteSharp.asar.dll";
                     string libraryName = "asar.dll";
                     string tempDllPath = ResourceExtractor.LoadUnmanagedLibraryFromResource(Assembly.GetExecutingAssembly(), resourceName, libraryName);
                 }

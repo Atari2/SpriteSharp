@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
     class Pixi {
         private readonly ToolData Data;
         private readonly CommandLineOptions CmdOpts;

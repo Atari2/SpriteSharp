@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
     class ToolData {
         public Dictionary<Defines.ListType, Sprite[]> SprLists = new() {
             { Defines.ListType.Sprite, new Sprite[Defines.MaxSprCount] },

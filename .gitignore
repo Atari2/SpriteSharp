@@ -339,6 +339,6 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 
-SpriteToolSuperSharp/assets/sprites/
-SpriteToolSuperSharp/assets/*.smc
-SpriteToolSuperSharp/assets/list.txt
+SpriteSharp/assets/sprites/
+SpriteSharp/assets/*.smc
+SpriteSharp/assets/list.txt

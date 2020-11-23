@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Runtime.InteropServices;
 
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
 
     class Rom {
         public string Filename { get; set; }

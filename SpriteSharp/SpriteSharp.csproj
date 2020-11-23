@@ -5,8 +5,11 @@
     <TargetFramework>net5.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Platforms>AnyCPU</Platforms>
-    <ApplicationIcon>PIxi.ico</ApplicationIcon>
-    <AssemblyName>Pixi</AssemblyName>
+    <ApplicationIcon>Pixi.ico</ApplicationIcon>
+    <AssemblyName>SpriteSharp</AssemblyName>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>SpriteSharp.pfx</AssemblyOriginatorKeyFile>
+    <RootNamespace>SpriteSharp</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

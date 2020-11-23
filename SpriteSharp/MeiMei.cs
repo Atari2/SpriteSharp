@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SpriteToolSuperSharp {
+namespace SpriteSharp {
     class MeiMei {
         const int SprAddrLimit = 0x800;
         public bool AlwaysRemap { get; set; } = false;

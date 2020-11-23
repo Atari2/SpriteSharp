@@ -26,7 +26,7 @@ namespace SpriteToolSuperSharp {
         }
         async public Task Run() {
             if (!Rom.RunChecks(out string errors)) {
-                Mixins.WaitAndExit(errors);
+                throw new CheckFailedException(errors);
             }
             if (!Opts.DisableMeiMei) {
                 MeiMei.Instance.Initialize(Rom.Filename);
@@ -40,11 +40,7 @@ namespace SpriteToolSuperSharp {
             Data.ExtraDefines = ListExtraASM(Opts.AsmDirPath + "/ExtraDefines");
 
             // populate sprite list
-            try {
-                await PopulateSpriteList(Paths.ASMPaths, Paths.ASMPaths[Defines.FileType.List], Opts.Output);
-            } catch (Exception e) {
-                Mixins.WaitAndExit(e.Message);
-            }
+            await PopulateSpriteList(Paths.ASMPaths, Paths.ASMPaths[Defines.FileType.List], Opts.Output);
 
             // clean old rom
             await CleanPreviousRuns(Paths.ASMPaths[Defines.FileType.Asm], Opts.AsmDir);
@@ -77,7 +73,7 @@ namespace SpriteToolSuperSharp {
             if (Opts.ExtMod)
                 CreateLMRestore(Rom.Filename);
 
-            Console.Out.WriteLine("\nAll sprites applied successfully!");
+            Console.WriteLine("\nAll sprites applied successfully!");
 
             Rom.Close();
             Asar.close();
@@ -86,34 +82,35 @@ namespace SpriteToolSuperSharp {
                 await MeiMei.Instance.Run();
             }
 
+            if (Opts.Output != null)
+                await Opts.Output.FlushAsync();
+
             if (Opts.LMHandle) {
                 if (!NativeMethods.PostMessageWrap(Opts.WindowHandle, Opts.VerificationCode)) {
-                    Mixins.WaitAndExit("Something went wrong while posting the reload rom message to Lunar Magic, reload the ROM manually");
+                    throw new LunarMagicException();
                 }
-            } else {
-                Console.Out.WriteLine("Press any key to exit...");
-                Console.ReadKey();
+                Environment.Exit(0);
             }
         }
         private void Patch(string patchname) {
             if (!Asar.patch(patchname, ref Rom.RomData)) {
                 var errors = Asar.geterrors();
-                Mixins.WaitAndExit("An error has been detected\n" + errors.Aggregate("", (x, b) => x += b.Fullerrdata + "\n"));
+                throw new AsarErrorException("An error has been detected\n" + errors.Aggregate("", (x, b) => x += b.Fullerrdata + "\n"));
             }
             Rom.RomSize = Rom.RomData.Length;
         }
         private void SetPaths(string arg) {
             foreach (var (type, path) in Paths.ASMPaths) {
                 if (type == Defines.FileType.List) {
-                    Paths.ASMPaths[type] = Mixins.SetPathsRelativeTo(path, Rom.Filename);
+                    Paths.ASMPaths[type] = path.SetPathsRelativeTo(Rom.Filename);
                 } else {
-                    Paths.ASMPaths[type] = Mixins.SetPathsRelativeTo(path, arg);
+                    Paths.ASMPaths[type] = path.SetPathsRelativeTo(arg);
                 }
             }
             Opts.AsmDir = Paths.ASMPaths[Defines.FileType.Asm];
-            Opts.AsmDirPath = Mixins.CleanPathTrail(Opts.AsmDir);
+            Opts.AsmDirPath = Opts.AsmDir.CleanPathTrail();
             foreach (var (type, path) in Paths.Extensions) {
-                Paths.Extensions[type] = Mixins.SetPathsRelativeTo(path, Rom.Filename);
+                Paths.Extensions[type] = path.SetPathsRelativeTo(Rom.Filename);
             }
         }
         private void CreateConfigFile(string configpath) {
@@ -129,110 +126,104 @@ namespace SpriteToolSuperSharp {
             List<string> lines = (await File.ReadAllLinesAsync(listName)).Select(x => x.Trim()).ToList();
             lines.RemoveAll(x => string.IsNullOrWhiteSpace(x));
             foreach (var (line, i) in lines.WithIndex()) {
+                int sprid = 0;
+                int level = 0x200;
+                if (line == "SPRITE:") {
+                    type = Defines.ListType.Sprite; continue;
+                } else if (line == "EXTENDED:") {
+                    type = Defines.ListType.Extended; continue;
+                } else if (line == "CLUSTER:") {
+                    type = Defines.ListType.Cluster; continue;
+                }
+                List<string> parts = new();
+                StringBuilder sr = new StringBuilder();
+                foreach (char c in line) {
+                    if (c == ':' && parts.Count == 0 && Opts.PerLevel) {
+                        parts.Add(sr.ToString().Trim());
+                        sr.Clear();
+                    } else if (char.IsWhiteSpace(c) && parts.Count < (Opts.PerLevel ? 2 : 1)) {
+                        parts.Add(sr.ToString().Trim());
+                        sr.Clear();
+                    } else
+                        sr.Append(c);
+                }
+                parts.Add(sr.ToString().Trim());
+                if (parts.Count != (Opts.PerLevel ? 3 : 2))
+                    throw new ListParsingException($"Error on line {i}, malformed line");
                 try {
-                    int sprid = 0;
-                    int level = 0x200;
-                    if (line == "SPRITE:") {
-                        type = Defines.ListType.Sprite; continue;
-                    } else if (line == "EXTENDED:") {
-                        type = Defines.ListType.Extended; continue;
-                    } else if (line == "CLUSTER:") {
-                        type = Defines.ListType.Cluster; continue;
-                    }
-                    List<string> parts = new();
-                    StringBuilder sr = new StringBuilder();
-                    foreach (char c in line) {
-                        if (c == ':' && parts.Count == 0 && Opts.PerLevel) {
-                            parts.Add(sr.ToString().Trim());
-                            sr.Clear();
-                        } else if (char.IsWhiteSpace(c) && parts.Count < (Opts.PerLevel ? 2 : 1)) {
-                            parts.Add(sr.ToString().Trim());
-                            sr.Clear();
-                        } else
-                            sr.Append(c);
-                    }
-                    parts.Add(sr.ToString().Trim());
-                    if (parts.Count != (Opts.PerLevel ? 3 : 2))
-                        throw new Exception($"Error on line {i}, malformed line");
-                    try {
-                        sprid = Convert.ToInt32(parts[0], 16);
-                    } catch (Exception e) {
-                        throw new Exception($"Error on line {i}: {e.Message}");
-                    }
-                    if (type == Defines.ListType.Sprite) {
-                        if (parts.Count > 2) {
-                            try {
-                                level = Convert.ToInt32(parts[0], 16);
-                                sprid = Convert.ToInt32(parts[1], 16);
-                            } catch (Exception e) {
-                                throw new Exception($"Error on line {i}: {e.Message}");
-                            }
-                        }
-                        if (parts.Count > 2 && level != 0x200 && !Opts.PerLevel) {
-                            throw new Exception($"Error on line {i}: Trying to insert per level sprites without the -pl flag");
-                        }
-                        int n = VerifySprite(level, sprid, Opts.PerLevel);
-                        if (n == -1) {
-                            if (sprid >= 0x100) throw new Exception($"Error on line {i}: Sprite number must be less than 0x100");
-                            if (level > 0x200) throw new Exception($"Error on line {i}: Level must range from 000-1FF");
-                            if (sprid >= 0xB0 && sprid < 0xC0) throw new Exception($"Error on line {i}: Only sprite B0-BF can be assigned a level");
-                        }
-                    } else {
-                        if (sprid > Defines.SprCount)
-                            throw new Exception($"Error on line {i}: Sprite number must be less than 0x80");
-                    }
-                    if (Data.SprLists[type][sprid].Line >= 0)
-                        throw new Exception($"Error on line {i}: Sprite number already used");
-                    Data.SprLists[type][sprid].Line = i;
-                    Data.SprLists[type][sprid].Level = level;
-                    Data.SprLists[type][sprid].Number = sprid;
-                    Data.SprLists[type][sprid].SprType = (int)type;
-                    string dir = "";
-                    if (type != Defines.ListType.Sprite) {
-                        dir = paths[(Defines.FileType)((int)Defines.FileType.Extended - 1 + (int)type)];
-                    } else {
-                        if (sprid < 0xC0)
-                            dir = paths[Defines.FileType.Sprites];
-                        else if (sprid > 0xD0)
-                            dir = paths[Defines.FileType.Shooters];
-                        else
-                            dir = paths[Defines.FileType.Generators];
-                    }
-                    Data.SprLists[type][sprid].Directory = dir;
-                    string filename = dir + parts[^1];
-                    if (type != Defines.ListType.Sprite) {
-                        if (!filename.EndsWith(".asm"))
-                            throw new Exception($"Error on line {i}, not an asm file");
-                        Data.SprLists[type][sprid].AsmFile = filename;
-                    } else {
-                        Data.SprLists[type][sprid].CfgFile = filename;
-                        if (filename.ToLower().EndsWith(".json"))
-                            Data.SprLists[type][sprid].ReadJson(output);
-                        else if (filename.ToLower().EndsWith(".cfg"))
-                            Data.SprLists[type][sprid].ReadCfg(output);
-                        else
-                            throw new Exception($"Error on line {i}: Unknown filetype");
-                    }
-                    if (output != null) {
-                        output?.WriteLine($"Read from line {i}");
-                        if (level != 0x200)
-                            output?.WriteLine($"Number {sprid:X02} for level {level:X03}");
-                        else
-                            output?.WriteLine($"Number {sprid:X02}");
-                        output.Flush();
-                        Data.SprLists[type][sprid].PrintSprite(output);
-                        output?.Write("\n--------------------------------------\n");
-                        output.Flush();
-                    }
-                    if (Data.SprLists[type][sprid].Table.Type == 0) {
-                        Data.SprLists[type][sprid].Table.Init = new Pointer(Defines.InitPtr + 2 * sprid);
-                        Data.SprLists[type][sprid].Table.Main = new Pointer(Defines.MainPtr + 2 * sprid);
-                    }
-                } catch (Exception e) when (e is JsonException || e is NotSupportedException) {
-                    Console.WriteLine($"Error was thrown while parsing JSON file, error was {e.Message}");
+                    sprid = Convert.ToInt32(parts[0], 16);
                 } catch (Exception e) {
-                    Mixins.WaitAndExit("Uncaught exception occurred when parsing sprites, contact the developer. More details below: \n" +
-                        $"{e.Message}\n\t{e.StackTrace}");
+                    throw new ListParsingException($"Error on line {i}: {e.Message}");
+                }
+                if (type == Defines.ListType.Sprite) {
+                    if (parts.Count > 2) {
+                        try {
+                            level = Convert.ToInt32(parts[0], 16);
+                            sprid = Convert.ToInt32(parts[1], 16);
+                        } catch (Exception e) {
+                            throw new ListParsingException($"Error on line {i}: {e.Message}");
+                        }
+                    }
+                    if (parts.Count > 2 && level != 0x200 && !Opts.PerLevel) {
+                        throw new ListParsingException($"Error on line {i}: Trying to insert per level sprites without the -pl flag");
+                    }
+                    int n = VerifySprite(level, sprid, Opts.PerLevel);
+                    if (n == -1) {
+                        if (sprid >= 0x100) throw new ListParsingException($"Error on line {i}: Sprite number must be less than 0x100");
+                        if (level > 0x200) throw new ListParsingException($"Error on line {i}: Level must range from 000-1FF");
+                        if (sprid >= 0xB0 && sprid < 0xC0) throw new ListParsingException($"Error on line {i}: Only sprite B0-BF can be assigned a level");
+                    }
+                } else {
+                    if (sprid > Defines.SprCount)
+                        throw new ListParsingException($"Error on line {i}: Sprite number must be less than 0x80");
+                }
+                if (Data.SprLists[type][sprid].Line >= 0)
+                    throw new ListParsingException($"Error on line {i}: Sprite number already used");
+                Data.SprLists[type][sprid].Line = i;
+                Data.SprLists[type][sprid].Level = level;
+                Data.SprLists[type][sprid].Number = sprid;
+                Data.SprLists[type][sprid].SprType = (int)type;
+                string dir = "";
+                if (type != Defines.ListType.Sprite) {
+                    dir = paths[(Defines.FileType)((int)Defines.FileType.Extended - 1 + (int)type)];
+                } else {
+                    if (sprid < 0xC0)
+                        dir = paths[Defines.FileType.Sprites];
+                    else if (sprid > 0xD0)
+                        dir = paths[Defines.FileType.Shooters];
+                    else
+                        dir = paths[Defines.FileType.Generators];
+                }
+                Data.SprLists[type][sprid].Directory = dir;
+                string filename = dir + parts[^1];
+                if (type != Defines.ListType.Sprite) {
+                    if (!filename.EndsWith(".asm"))
+                        throw new ListParsingException($"Error on line {i}, not an asm file");
+                    Data.SprLists[type][sprid].AsmFile = filename;
+                } else {
+                    Data.SprLists[type][sprid].CfgFile = filename;
+                    var ext = Path.GetExtension(filename).ToLower();
+                    if (ext == ".json") {
+                        Data.SprLists[type][sprid].ReadJson(output);
+                    } else if (ext == ".cfg") {
+                        Data.SprLists[type][sprid].ReadCfg(output);
+                    } else
+                        throw new ListParsingException($"Error on line {i}: Unknown filetype");
+                }
+                if (output != null) {
+                    output?.WriteLine($"Read from line {i}");
+                    if (level != 0x200)
+                        output?.WriteLine($"Number {sprid:X02} for level {level:X03}");
+                    else
+                        output?.WriteLine($"Number {sprid:X02}");
+                    output?.Flush();
+                    Data.SprLists[type][sprid].PrintSprite(output);
+                    output?.Write("\n--------------------------------------\n");
+                    output?.Flush();
+                }
+                if (Data.SprLists[type][sprid].Table.Type == 0) {
+                    Data.SprLists[type][sprid].Table.Init = new Pointer(Defines.InitPtr + 2 * sprid);
+                    Data.SprLists[type][sprid].Table.Main = new Pointer(Defines.MainPtr + 2 * sprid);
                 }
             }
         }
@@ -354,8 +345,8 @@ namespace SpriteToolSuperSharp {
                             size++;
                         if ((size - 8 + inverted) <= 0x10000) {
                             int pc = i * 0x8000 + offset - 8;
-                            Console.Out.WriteLine($"Size: {size - 8:X04}, inverted {inverted:X04}");
-                            Console.Out.WriteLine($"Bad SpriteTool RATS tag detected at ${Rom.PcToSnes(pc):X06}, 0x{pc:X05}. Remove anyway? (y/n)");
+                            Console.WriteLine($"Size: {size - 8:X04}, inverted {inverted:X04}");
+                            Console.WriteLine($"Bad SpriteTool RATS tag detected at ${Rom.PcToSnes(pc):X06}, 0x{pc:X05}. Remove anyway? (y/n)");
                             var key = Console.ReadKey();
                             if (key.KeyChar != 'Y' && key.KeyChar != 'y') {
                                 continue;
@@ -402,7 +393,7 @@ namespace SpriteToolSuperSharp {
                     plslvaddr--;
                     plslvaddr += (spr.Number - 0xB0) * 2;
                     if (Data.PlsDataAddr >= 0x8000) {
-                        Mixins.WaitAndExit("Too many Per-Level sprites. Please remove some");
+                        throw new SpriteFailureException("Too many Per-Level sprites. Please remove some");
                     }
                     Data.PlsSpritePtr[plslvaddr] = (byte)(Data.PlsDataAddr + 1);
                     Data.PlsSpritePtr[plslvaddr + 1] = (byte)((Data.PlsDataAddr + 1) >> 8);
@@ -435,9 +426,9 @@ namespace SpriteToolSuperSharp {
                     await File.WriteAllBytesAsync(asmpath + "_PerLevelT.bin", Data.PlsData[0..Data.PlsDataAddr]);
                     await File.WriteAllBytesAsync(asmpath + "_PerLevelCustomPtrTable.bin", Data.PlsPointers[0..Data.PlsDataAddr]);
                 }
-                Mixins.WriteLongTable(Data.SprLists[Defines.ListType.Sprite][0x2000..0x2100], asmpath + "_DefaultTables.bin");
+                Data.SprLists[Defines.ListType.Sprite][0x2000..0x2100].WriteLongTable(asmpath + "_DefaultTables.bin");
             } else {
-                Mixins.WriteLongTable(Data.SprLists[Defines.ListType.Sprite][..0x100], asmpath + "_DefaultTables.bin");
+                Data.SprLists[Defines.ListType.Sprite][..0x100].WriteLongTable(asmpath + "_DefaultTables.bin");
             }
             List<byte> customstatusptrs = new();
             int start = Opts.PerLevel ? 0x2000 : 0;
@@ -483,10 +474,10 @@ namespace SpriteToolSuperSharp {
         private async Task CreateExtFiles() {
             Data.Map.AddRange(new Map16[Defines.Map16Size]);
             Dictionary<Defines.ExtType, FileStream> streams = new() {
-                { Defines.ExtType.ExtMW2, Mixins.OpenSubfile(Rom.Filename, "mw2") },
-                { Defines.ExtType.ExtMWT, Mixins.OpenSubfile(Rom.Filename, "mwt") },
-                { Defines.ExtType.ExtS16, Mixins.OpenSubfile(Rom.Filename, "s16") },
-                { Defines.ExtType.ExtSSC, Mixins.OpenSubfile(Rom.Filename, "ssc") }
+                { Defines.ExtType.ExtMW2, Rom.OpenSubfile("mw2") },
+                { Defines.ExtType.ExtMWT, Rom.OpenSubfile("mwt") },
+                { Defines.ExtType.ExtS16, Rom.OpenSubfile("s16") },
+                { Defines.ExtType.ExtSSC, Rom.OpenSubfile("ssc") }
             };
             foreach (var (type, ext) in Paths.Extensions) {
                 if (ext != string.Empty) {
@@ -508,7 +499,7 @@ namespace SpriteToolSuperSharp {
                     if (spr.Line != -1) {
                         int ntile = Map16.FindFree(Data.Map, spr.MapData.Count);
                         if (ntile == -1) {
-                            Mixins.WaitAndExit("Too much Map16 data to fit inside your s16 file");
+                            throw new SpriteFailureException("Too much Map16 data to fit inside your s16 file");
                         }
                         Data.Map.RemoveRange(ntile, spr.MapData.Count);
                         Data.Map.InsertRange(ntile, spr.MapData);           // replace the 00s with our data
@@ -596,7 +587,7 @@ namespace SpriteToolSuperSharp {
                 if (k == default) {
                     if (print.StartsWith("VERG")) {
                         if (Defines.ToolVersion < Convert.ToInt32(print[4..].Trim(), 16)) {
-                            Mixins.WaitAndExit($"Version Guard failed on {spr.AsmFile}\n");
+                            throw new VersionGuardFailed(spr.AsmFile);
                         }
                     } else
                         output?.WriteLine($"{prints[i]}");
@@ -608,7 +599,7 @@ namespace SpriteToolSuperSharp {
             spr.StatusPointers.Remove("init", out spr.Table.Init);
             spr.StatusPointers.Remove("main", out spr.Table.Main);
             if (spr.Table.Init.IsEmpty() && spr.Table.Main.IsEmpty()) {
-                Mixins.WaitAndExit($"Sprite {spr.AsmFile} had neither INIT nor MAIN defined in its file, insertion has been aborted");
+                throw new SpriteFailureException($"Sprite {spr.AsmFile} had neither INIT nor MAIN defined in its file, insertion has been aborted");
             }
             if (spr.SprType == 1) {
                 spr.ExtCapePtr = spr.StatusPointers["cape"];
@@ -661,17 +652,17 @@ namespace SpriteToolSuperSharp {
             sr.Append("print \"\tRoutine: <base> inserted at $\",pc\n\t\t\t\tnamespace <base>\n\t\t\t\tincsrc \"<target>\"\n\t\t\t\tnamespace off\n");
             sr.Append("\t\t\tORG <offset>+$03E05C\n\t\t\t\tdl <base>\n\t\tendif\n\t\tpullpc\n\tendif\nendmacro\n");
             if (!Directory.Exists(routinepath)) {
-                Mixins.WaitAndExit("Unable to open the routine directory");
+                throw new MissingFileException(routinepath);
             }
             var routines = Directory.GetFiles(routinepath, "*.asm", SearchOption.AllDirectories);
             if (routines.Length > 100) {
-                Mixins.WaitAndExit("More than 100 routines, please remove some");
+                throw new SpriteFailureException("More than 100 routines, please remove some");
             }
             foreach (var (routine, count) in routines.WithIndex()) {
                 string name = Path.GetFileNameWithoutExtension(routine);
                 sr.Append($"!{name} = 0\nmacro {name}()\n\t%include_once(\"{routinepath}{name}.asm\", {name}, ${(count * 3):X02})\n\tJSL {name}\nendmacro\n");
             }
-            Console.Out.WriteLine($"{routines.Length} Shared routines registered in \"{routinepath}\"");
+            Console.WriteLine($"{routines.Length} Shared routines registered in \"{routinepath}\"");
             await File.WriteAllTextAsync("shared.asm", sr.ToString());
         }
         private static List<string> ListExtraASM(string asmpath) {

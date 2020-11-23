@@ -25,16 +25,16 @@ namespace SpriteToolSuperSharp {
         public bool Patch(string patchname, ref MeiMeiRom rom) {
             if (!Asar.patch(patchname, ref rom.RomData)) {
                 Asarerror[] errors = Asar.geterrors();
-                Console.Out.WriteLine("An error has been detected: \n");
+                Console.WriteLine("An error has been detected: \n");
                 for (int i = 0; i < errors.Length; i++) {
-                    Console.Out.WriteLine(errors[i].Fullerrdata);
+                    Console.WriteLine(errors[i].Fullerrdata);
                 }
                 return false;
             }
             if (Debug) {
                 var prints = Asar.getprints();
                 foreach (var print in prints) {
-                    Console.Out.WriteLine($"\t{print}");
+                    Console.WriteLine($"\t{print}");
                 }
             }
             rom.RomSize = rom.RomData.Length;
@@ -54,7 +54,7 @@ namespace SpriteToolSuperSharp {
 
         public async Task Run() {
             if (!Asar.init()) {
-                Mixins.WaitAndExit("Error: Asar library is missing or couldn't be initialized, please redownload the tool or the dll.");
+                throw new MissingAsarDLLException();
             }
             NowRom = new MeiMeiRom(Name);           // rom to use for reading values
             Rom = new MeiMeiRom(Name);               // actual rom to patch
@@ -62,8 +62,8 @@ namespace SpriteToolSuperSharp {
             Asar.close();
 
             if (!returnvalue) {
-                Console.Out.WriteLine(ErrMsg);
-                Console.Out.WriteLine($"\n\nError occurred in MeiMei\n{ErrMsg}\nYour rom has reverted before Pixi insert");
+                Console.WriteLine(ErrMsg);
+                Console.WriteLine($"\n\nError occurred in MeiMei\n{ErrMsg}\nYour rom has reverted before Pixi insert");
                 Rom.RomData = PrevRom.RomData;
                 Rom.RomSize = PrevRom.RomSize;
             }
@@ -84,7 +84,7 @@ namespace SpriteToolSuperSharp {
             }
             bool revert = changeEx || AlwaysRemap;
             if (changeEx) {
-                Console.Out.WriteLine("\nExtra bytes change detected");
+                Console.WriteLine("\nExtra bytes change detected");
             }
             if (revert) {
                 byte[] sprAllData = new byte[SprAddrLimit];
@@ -182,14 +182,14 @@ namespace SpriteToolSuperSharp {
                         await File.WriteAllTextAsync($"_tmp_{lv:X}.asm", sr.ToString());
                         sr.Clear();
                         if (Debug) {
-                            Console.Out.WriteLine($"Fixing sprite data for level {lv:X}");
+                            Console.WriteLine($"Fixing sprite data for level {lv:X}");
                         }
                         if (!Patch($"_tmp_{lv:X}.asm", ref Rom)) {
                             ErrMsg = "An error occurred when patching sprite data with asar.";
                             return false;
                         }
                         if (Debug) {
-                            Console.Out.WriteLine("Done!");
+                            Console.WriteLine("Done!");
                         }
                         if (!KeepTemp) {
                             File.Delete(binFilename);
@@ -198,7 +198,7 @@ namespace SpriteToolSuperSharp {
                         remapped[lv] = true;
                     }
                 }
-                Console.Out.WriteLine("Sprite data remapped successfully");
+                Console.WriteLine("Sprite data remapped successfully");
                 revert = false;
             }
             return !revert;

@@ -589,52 +589,56 @@ namespace SpriteToolSuperSharp {
         }
 
         public void ReadCfg(TextWriter stream) {
-            if (!File.Exists(CfgFile)) {
-                throw new Exception($"File {CfgFile} not found");
-            }
-            List<string> cfg = File.ReadAllText(CfgFile).Split('\n').ToList();
-            cfg.RemoveAll(x => string.IsNullOrWhiteSpace(x));
-            byte[] tweaks = cfg[2].Split('\t', ' ').Select(x => Convert.ToByte(x.Trim(), 16)).ToArray();
-            byte[] prop = cfg[3].Split(' ', '\t').Select(x => Convert.ToByte(x.Trim(), 16)).ToArray();
-            Regex exRe = new Regex(@"([\da-fA-F]{1,2}):([\da-fA-F]{1,2})", RegexOptions.Compiled);
-            Match exM = exRe.Match(cfg.Count > 5 ? cfg[5] : "");
-            if ((cfg.Count != 5 && cfg.Count != 6) || tweaks.Length != 6 || prop.Length != 2)
-                throw new Exception($"CFG file had wrong format {CfgFile}");
-            for (int i = 0; i < cfg.Count; i++) {
-                switch (i) {
-                    case 0:
-                        Table.Type = Convert.ToByte(cfg[0].Trim(), 16);
-                        break;
-                    case 1:
-                        Table.ActLike = Convert.ToByte(cfg[1].Trim(), 16);
-                        break;
-                    case 2:
-                        Table.Tweak = tweaks;
-                        break;
-                    case 3:
-                        Table.Extra = prop;
-                        break;
-                    case 4:
-                        AsmFile = Mixins.AppendToDir(CfgFile, cfg[i]);
-                        break;
-                    case 5:
-                        if (!exM.Success) {
-                            ByteCount = 0;
-                            ExtraByteCount = 0;
-                        } else {
-                            ByteCount = Convert.ToByte(exM.Groups[1].Value, 16);
-                            ExtraByteCount = Convert.ToByte(exM.Groups[2].Value, 16);
-                            if (ByteCount > 12) ByteCount = 12;
-                            if (ExtraByteCount > 12) ExtraByteCount = 12;
-                        }
-                        break;
-                    default:
-                        throw new Exception($"CFG file had wrong format {CfgFile}");
+            try {
+                if (!File.Exists(CfgFile)) {
+                    throw new Exception($"File {CfgFile} not found");
                 }
-            }
-            if (stream is not null) {
-                stream.WriteLine($"Parsed: {CfgFile}, {Line - 1} lines");
-                stream.Flush();
+                List<string> cfg = File.ReadAllText(CfgFile).Split('\n').ToList();
+                cfg.RemoveAll(x => string.IsNullOrWhiteSpace(x));
+                byte[] tweaks = cfg[2].Split('\t', ' ').Select(x => Convert.ToByte(x.Trim(), 16)).ToArray();
+                byte[] prop = cfg[3].Split(' ', '\t').Select(x => Convert.ToByte(x.Trim(), 16)).ToArray();
+                Regex exRe = new Regex(@"([\da-fA-F]{1,2}):([\da-fA-F]{1,2})", RegexOptions.Compiled);
+                Match exM = exRe.Match(cfg.Count > 5 ? cfg[5] : "");
+                if ((cfg.Count != 5 && cfg.Count != 6) || tweaks.Length != 6 || prop.Length != 2)
+                    throw new Exception($"CFG file had wrong format {CfgFile}");
+                for (int i = 0; i < cfg.Count; i++) {
+                    switch (i) {
+                        case 0:
+                            Table.Type = Convert.ToByte(cfg[0].Trim(), 16);
+                            break;
+                        case 1:
+                            Table.ActLike = Convert.ToByte(cfg[1].Trim(), 16);
+                            break;
+                        case 2:
+                            Table.Tweak = tweaks;
+                            break;
+                        case 3:
+                            Table.Extra = prop;
+                            break;
+                        case 4:
+                            AsmFile = CfgFile.AppendToDir(cfg[i]);
+                            break;
+                        case 5:
+                            if (!exM.Success) {
+                                ByteCount = 0;
+                                ExtraByteCount = 0;
+                            } else {
+                                ByteCount = Convert.ToByte(exM.Groups[1].Value, 16);
+                                ExtraByteCount = Convert.ToByte(exM.Groups[2].Value, 16);
+                                if (ByteCount > 12) ByteCount = 12;
+                                if (ExtraByteCount > 12) ExtraByteCount = 12;
+                            }
+                            break;
+                        default:
+                            throw new Exception($"CFG file had wrong format {CfgFile}");
+                    }
+                }
+                if (stream is not null) {
+                    stream.WriteLine($"Parsed: {CfgFile}, {Line - 1} lines");
+                    stream.Flush();
+                }
+            } catch (Exception e) {
+                throw new CFGParsingException(e.Message);
             }
         }
 
@@ -645,7 +649,7 @@ namespace SpriteToolSuperSharp {
                 };
                 var readOnlySpan = new ReadOnlySpan<byte>(File.ReadAllBytes(CfgFile));
                 JsonSprite root = JsonSerializer.Deserialize<JsonSprite>(readOnlySpan, options);
-                AsmFile = Mixins.AppendToDir(CfgFile, root.asmfile);
+                AsmFile = CfgFile.AppendToDir(root.asmfile);
                 Table.ActLike = root.actlike;
                 Table.Type = root.type;
                 if (Table.Type != 0) {
@@ -678,7 +682,7 @@ namespace SpriteToolSuperSharp {
 
                 }
             } catch (Exception e) {
-                Console.Out.WriteLine(e.Message);
+                throw new JSONParsingException(e.Message);
             }
         }
     }

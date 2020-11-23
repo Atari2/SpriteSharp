@@ -25,13 +25,13 @@ namespace SpriteToolSuperSharp {
         public bool MeiMeiKeepTemp { get; private set; } = false;
 
         public IntPtr WindowHandle = new IntPtr();
-        public UInt16 VerificationCode = 0;
+        public ushort VerificationCode = 0;
 
         public CommandLineOptions(string[] args) {
             Opts = args.ToList();
             RomFile = Parse();
             if (!File.Exists(RomFile)) {
-                Mixins.WaitAndExit($"Couldn't find {RomFile}, please make sure the name is correct");
+                throw new MissingFileException(RomFile);
             }
         }
 
@@ -39,53 +39,55 @@ namespace SpriteToolSuperSharp {
             return RomFile;
         }
 
-        public void PrintHelp() {
+        public static void PrintHelp() {
             var paths = new ToolPaths().ASMPaths;
-            Console.Out.WriteLine($"Version 1.{Defines.ToolVersion:X02}");
-            Console.Out.WriteLine("Usage: pixi <options> <ROM>\nOptions are:");
-            Console.Out.WriteLine("-d\t\tEnable debug output, the following flag <-out> only works when this is set");
-            Console.Out.WriteLine("-out <filename>\t\tTo be used IMMEDIATELY after -d, will redirect the debug output to the specified file, if omitted, the output will default to prompt");
-            Console.Out.WriteLine("-k\t\tKeep debug files\n");
-            Console.Out.WriteLine($"-l  <listpath>\tSpecify a custom list file (Default: {paths[Defines.FileType.List]})");
-            Console.Out.WriteLine("-pl\t\tPer level sprites - will insert perlevel sprite code");
-            Console.Out.WriteLine("-npl\t\tSame as the current default, no sprite per level will be inserted, left dangling for compatibility reasons");
-            Console.Out.WriteLine("-d255spl\t\tDisable 255 sprite per level support (won't do the 1938 remap)");
-            Console.Out.WriteLine("\n");
+            Console.WriteLine($"Version 1.{Defines.ToolVersion:X02}");
+            Console.WriteLine("Usage: pixi <options> <ROM>\nOptions are:");
+            Console.WriteLine("-d\t\tEnable debug output, the following flag <-out> only works when this is set");
+            Console.WriteLine("-out <filename>\t\tTo be used IMMEDIATELY after -d, will redirect the debug output to the specified file, if omitted, the output will default to prompt");
+            Console.WriteLine("-k\t\tKeep debug files\n");
+            Console.WriteLine($"-l  <listpath>\tSpecify a custom list file (Default: {paths[Defines.FileType.List]})");
+            Console.WriteLine("-pl\t\tPer level sprites - will insert perlevel sprite code");
+            Console.WriteLine("-npl\t\tSame as the current default, no sprite per level will be inserted, left dangling for compatibility reasons");
+            Console.WriteLine("-d255spl\t\tDisable 255 sprite per level support (won't do the 1938 remap)");
+            Console.WriteLine("\n");
 
-            Console.Out.WriteLine($"-a  <asm>\tSpecify a custom asm directory (Default {paths[Defines.FileType.Asm]})");
-            Console.Out.WriteLine($"-sp <sprites>\tSpecify a custom sprites directory (Default {paths[Defines.FileType.Sprites]})");
-            Console.Out.WriteLine($"-sh <shooters>\tSpecify a custom shooters directory (Default {paths[Defines.FileType.Shooters]})");
-            Console.Out.WriteLine($"-g  <generators>\tSpecify a custom generators directory (Default {paths[Defines.FileType.Generators]})");
-            Console.Out.WriteLine($"-e  <extended>\tSpecify a custom extended sprites directory (Default {paths[Defines.FileType.Extended]})");
-            Console.Out.WriteLine($"-c  <cluster>\tSpecify a custom cluster sprites directory (Default {paths[Defines.FileType.Cluster]})");
-            Console.Out.WriteLine("\n");
+            Console.WriteLine($"-a  <asm>\tSpecify a custom asm directory (Default {paths[Defines.FileType.Asm]})");
+            Console.WriteLine($"-sp <sprites>\tSpecify a custom sprites directory (Default {paths[Defines.FileType.Sprites]})");
+            Console.WriteLine($"-sh <shooters>\tSpecify a custom shooters directory (Default {paths[Defines.FileType.Shooters]})");
+            Console.WriteLine($"-g  <generators>\tSpecify a custom generators directory (Default {paths[Defines.FileType.Generators]})");
+            Console.WriteLine($"-e  <extended>\tSpecify a custom extended sprites directory (Default {paths[Defines.FileType.Extended]})");
+            Console.WriteLine($"-c  <cluster>\tSpecify a custom cluster sprites directory (Default {paths[Defines.FileType.Cluster]})");
+            Console.WriteLine("\n");
 
-            Console.Out.WriteLine($"-r   <routines>\tSpecify a shared routine directory (Default {paths[Defines.FileType.List]})");
-            Console.Out.WriteLine("\n");
+            Console.WriteLine($"-r   <routines>\tSpecify a shared routine directory (Default {paths[Defines.FileType.List]})");
+            Console.WriteLine("\n");
 
-            Console.Out.WriteLine("-ext-off\t Disables extmod file logging (check LM's readme for more info on what extmod is)");
-            Console.Out.WriteLine("-ssc <append ssc>\tSpecify ssc file to be copied into <romname>.ssc");
-            Console.Out.WriteLine("-mwt <append mwt>\tSpecify mwt file to be copied into <romname>.mwt");
-            Console.Out.WriteLine("-mw2 <append mw2>\tSpecify mw2 file to be copied into <romname>.mw2, the provided file is assumed to have 0x00 first byte sprite header and the 0xFF end byte");
-            Console.Out.WriteLine("-s16 <base s16>\tSpecify s16 file to be used as a base for <romname>.s16");
-            Console.Out.WriteLine("     Do not use <romname>.xxx as an argument as the file will be overwriten");
+            Console.WriteLine("-ext-off\t Disables extmod file logging (check LM's readme for more info on what extmod is)");
+            Console.WriteLine("-ssc <append ssc>\tSpecify ssc file to be copied into <romname>.ssc");
+            Console.WriteLine("-mwt <append mwt>\tSpecify mwt file to be copied into <romname>.mwt");
+            Console.WriteLine("-mw2 <append mw2>\tSpecify mw2 file to be copied into <romname>.mw2, the provided file is assumed to have 0x00 first byte sprite header and the 0xFF end byte");
+            Console.WriteLine("-s16 <base s16>\tSpecify s16 file to be used as a base for <romname>.s16");
+            Console.WriteLine("     Do not use <romname>.xxx as an argument as the file will be overwriten");
 
-            Console.Out.WriteLine("\nMeiMei flags:");
-            Console.Out.WriteLine("-meimei-off\t\tShuts down MeiMei completely");
-            Console.Out.WriteLine("-meimei-a\t\tEnables always remap sprite data");
-            Console.Out.WriteLine("-meimei-k\t\tEnables keep temp patches files");
-            Console.Out.WriteLine("-meimei-d\t\tEnables debug for MeiMei patches\n");
+            Console.WriteLine("\nMeiMei flags:");
+            Console.WriteLine("-meimei-off\t\tShuts down MeiMei completely");
+            Console.WriteLine("-meimei-a\t\tEnables always remap sprite data");
+            Console.WriteLine("-meimei-k\t\tEnables keep temp patches files");
+            Console.WriteLine("-meimei-d\t\tEnables debug for MeiMei patches\n");
             Environment.Exit(0);
         }
         private string Parse() {
             if (Opts.Count == 0) {
-                Console.Out.WriteLine("Insert the name of your ROM (or drag and drop the rom on the window): ");
+                Console.WriteLine("Insert the name of your ROM (or drag and drop the rom on the window): ");
                 return Console.ReadLine();
             }
             if (Opts.Count == 1 && (Opts[0] == "-h" || Opts[0] == "--help"))
                 PrintHelp();
             for (int i = 0; i < Opts.Count - 1; i++) {
                 switch (Opts[i]) {
+                    case "-out":
+                        throw new InvalidCmdParameterException("Command line -out can't be used on its own (it has to follow -d)");
                     case "-h":
                     case "--help":
                         PrintHelp();
@@ -93,6 +95,9 @@ namespace SpriteToolSuperSharp {
                     case "-d":
                     case "--debug":
                         if (Opts[i + 1] == "-out") {
+                            if (i >= Opts.Count - 3) {
+                                throw new InvalidCmdParameterException("Command line option -out can't be used without providing a valid filename to dump to");
+                            }
                             OutFile = Opts[i + 2];
                             i += 2;
                         }
@@ -163,7 +168,7 @@ namespace SpriteToolSuperSharp {
                         VerificationCode = Convert.ToUInt16(Opts[i].Split(':')[1], 16);
                         break;
                     default:
-                        throw new Exception($"Invalid command line argument/option {Opts[i]}");
+                        throw new InvalidCmdParameterException($"Invalid command line argument/option {Opts[i]}");
                 }
             }
             return Opts[^1];
@@ -189,7 +194,7 @@ namespace SpriteToolSuperSharp {
         //lunar magic handle
         public bool LMHandle = false;
         public IntPtr WindowHandle;
-        public UInt16 VerificationCode = 0;
+        public ushort VerificationCode = 0;
 
 
         public ToolOptions(CommandLineOptions cmd, out MeiMeiInstance meimei, out ToolPaths Paths) {
@@ -213,6 +218,7 @@ namespace SpriteToolSuperSharp {
                 Output = new StreamWriter(OptionalOutFile);
             } else if (Debug) {
                 Output = Console.Out;
+                Console.SetOut(Output);
             }
         }
 

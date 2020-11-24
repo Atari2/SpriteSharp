@@ -36,10 +36,10 @@ namespace SpriteSharp {
             sr.Write(RomData);
         }
 
-        public int PcToSnes(int address) {
+        public static int PcToSnes(int address) {
             return ((address << 1) & 0x7F0000) | (address & 0x7FFF) | 0x8000;
         }
-        public int SnesToPc(int address) {
+        public static int SnesToPc(int address) {
             return ((address & 0x7F0000) >> 1 | (address & 0x7FFF));
         }
         private static int GetPointer(byte[] data, int address, int size = 3, int bank = 0x00) {
@@ -163,29 +163,29 @@ namespace SpriteSharp {
         public byte[] Prop = new byte[12];
 
         [JsonInclude, JsonPropertyName("Extra Property Byte 1")]
-        public byte prop1 { get => Prop[0]; set => Prop[0] = value; }
+        public byte Prop1 { get => Prop[0]; set => Prop[0] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 2")]
-        public byte prop2 { get => Prop[1]; set => Prop[1] = value; }
+        public byte Prop2 { get => Prop[1]; set => Prop[1] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 3")]
-        public byte prop3 { get => Prop[2]; set => Prop[2] = value; }
+        public byte Prop3 { get => Prop[2]; set => Prop[2] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 4")]
-        public byte prop4 { get => Prop[3]; set => Prop[3] = value; }
+        public byte Prop4 { get => Prop[3]; set => Prop[3] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 5")]
-        public byte prop5 { get => Prop[4]; set => Prop[4] = value; }
+        public byte Prop5 { get => Prop[4]; set => Prop[4] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 6")]
-        public byte prop6 { get => Prop[5]; set => Prop[5] = value; }
+        public byte Prop6 { get => Prop[5]; set => Prop[5] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 7")]
-        public byte prop7 { get => Prop[6]; set => Prop[6] = value; }
+        public byte Prop7 { get => Prop[6]; set => Prop[6] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 8")]
-        public byte prop8 { get => Prop[7]; set => Prop[7] = value; }
+        public byte Prop8 { get => Prop[7]; set => Prop[7] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 9")]
-        public byte prop9 { get => Prop[8]; set => Prop[8] = value; }
+        public byte Prop9 { get => Prop[8]; set => Prop[8] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 10")]
-        public byte prop10 { get => Prop[9]; set => Prop[9] = value; }
+        public byte Prop10 { get => Prop[9]; set => Prop[9] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 11")]
-        public byte prop11 { get => Prop[10]; set => Prop[10] = value; }
+        public byte Prop11 { get => Prop[10]; set => Prop[10] = value; }
         [JsonInclude, JsonPropertyName("Extra Property Byte 12")]
-        public byte prop12 { get => Prop[11]; set => Prop[11] = value; }
+        public byte Prop12 { get => Prop[11]; set => Prop[11] = value; }
 
     }
 
@@ -276,8 +276,8 @@ namespace SpriteSharp {
         public Pointer Main = new(0x018021);
         public byte[] Extra = new byte[2];
 
-        public static bool IsEmpty(List<Sprite> sprites) {
-            return sprites.All(x => x.Table.Init.IsEmpty() && x.Table.Main.IsEmpty());
+        public static bool IsEmpty(IEnumerable<Sprite> sprites) {
+            return sprites.Where(x => x is not null).All(x => x.Table.Init.IsEmpty() && x.Table.Main.IsEmpty());
         }
         public static implicit operator byte[](SpriteTable sp) {
             byte[] tab = new byte[0x10];
@@ -491,10 +491,10 @@ namespace SpriteSharp {
         public byte type;
 
         [JsonInclude, JsonPropertyName("Extra Property Byte 1")]
-        public byte extraprop1;
+        public byte extraProp1;
 
         [JsonInclude, JsonPropertyName("Extra Property Byte 2")]
-        public byte extraprop2;
+        public byte extraProp2;
 
         [JsonInclude, JsonPropertyName("Additional Byte Count (extra bit clear)")]
         public int addbcountclear;
@@ -530,6 +530,8 @@ namespace SpriteSharp {
         public List<Map16> MapData = new();
         public List<Display> Displays = new();
         public List<Collection> Collections = new();
+
+        public Sprite() { }
 
         public byte[] StatusPtrsToBytes() {
             List<byte> bytes = new();
@@ -654,8 +656,8 @@ namespace SpriteSharp {
                 Table.Type = root.type;
                 if (Table.Type != 0) {
                     // do the thing with the asm file
-                    Table.Extra[0] = root.extraprop1;
-                    Table.Extra[1] = root.extraprop2;
+                    Table.Extra[0] = root.extraProp1;
+                    Table.Extra[1] = root.extraProp2;
                     ByteCount = root.addbcountclear;
                     ExtraByteCount = root.addbcountset;
                     if (ByteCount > 12)

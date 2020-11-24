@@ -1,4 +1,4 @@
-﻿using AsarCLR;
+using AsarCLR;
 using System;
 using System.IO;
 using System.Reflection;

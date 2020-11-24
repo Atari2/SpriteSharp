@@ -6,7 +6,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SpriteSharp {
@@ -22,6 +21,10 @@ namespace SpriteSharp {
             Data = new ToolData();
             CmdOpts = new CommandLineOptions(args);
             Opts = new ToolOptions(CmdOpts, out MeiMei, out Paths);
+            if (Opts.Backup) {
+                File.Delete(CmdOpts.GetRomFile() + ".bak");
+                File.Copy(CmdOpts.GetRomFile(), CmdOpts.GetRomFile() + ".bak");
+            }
             Rom = new Rom(CmdOpts.GetRomFile());
         }
         async public Task Run() {
@@ -119,9 +122,6 @@ namespace SpriteSharp {
             File.WriteAllText(configpath, tofile);
         }
         private async Task PopulateSpriteList(Dictionary<Defines.FileType, string> paths, string listName, TextWriter output) {
-            foreach (var t in Data.SprLists.Keys) {
-                Data.SprLists[t] = Data.SprLists[t].Select(x => new Sprite()).ToArray();
-            }
             Defines.ListType type = Defines.ListType.Sprite;
             List<string> lines = (await File.ReadAllLinesAsync(listName)).Select(x => x.Trim()).ToList();
             lines.RemoveAll(x => string.IsNullOrWhiteSpace(x));
@@ -177,8 +177,9 @@ namespace SpriteSharp {
                     if (sprid > Defines.SprCount)
                         throw new ListParsingException($"Error on line {i}: Sprite number must be less than 0x80");
                 }
-                if (Data.SprLists[type][sprid].Line >= 0)
+                if (Data.SprLists[type][sprid] is not null)
                     throw new ListParsingException($"Error on line {i}: Sprite number already used");
+                Data.SprLists[type][sprid] = new();
                 Data.SprLists[type][sprid].Line = i;
                 Data.SprLists[type][sprid].Level = level;
                 Data.SprLists[type][sprid].Number = sprid;
@@ -361,6 +362,8 @@ namespace SpriteSharp {
         private void PatchSprites(List<string> extraDefines, Sprite[] sprites, int size) {
             for (int i = 0; i < size; i++) {
                 Sprite spr = sprites[i];
+                if (spr is null)
+                    continue;
                 if (spr.AsmFile == string.Empty || spr.AsmFile == null)
                     continue;
                 bool duplicate = false;
@@ -433,22 +436,44 @@ namespace SpriteSharp {
             List<byte> customstatusptrs = new();
             int start = Opts.PerLevel ? 0x2000 : 0;
             int end = start + 0x100;
-            Data.SprLists[Defines.ListType.Sprite][start..end].ToList().ForEach(x => customstatusptrs.AddRange(x.StatusPtrsToBytes()));
+            byte[] dummyTable = { 0x21, 0x80, 0x01, 0x21, 0x80, 0x01, 0x21, 0x80, 0x01, 0x21, 0x80, 0x01, 0x21, 0x80, 0x01 };
+            byte[] dummyPtr = { 0x21, 0x80, 0x01 };
+            foreach (var spr in Data.SprLists[Defines.ListType.Sprite][start..end]) {
+                if (spr is null)
+                    customstatusptrs.AddRange(dummyTable);
+                else
+                    customstatusptrs.AddRange(spr.StatusPtrsToBytes());
+            }
             while (customstatusptrs.Count < 0x100 * 15) {
                 for (int i = 0; i < 5; i++) customstatusptrs.AddRange(new Pointer(0x018021).ToBytes());
             }
             await File.WriteAllBytesAsync(asmpath + "_CustomStatusPtr.bin", customstatusptrs.ToArray());
 
             List<byte> otherptrs = new();
-            Data.SprLists[Defines.ListType.Cluster].ToList().ForEach(x => otherptrs.AddRange((byte[])x.Table.Main));
+            foreach (var spr in Data.SprLists[Defines.ListType.Cluster]) {
+                if (spr is null)
+                    otherptrs.AddRange(dummyPtr);
+                else
+                    otherptrs.AddRange((byte[])spr.Table.Main);
+            }
             await File.WriteAllBytesAsync(asmpath + "_ClusterPtr.bin", otherptrs.ToArray());
 
             otherptrs.Clear();
-            Data.SprLists[Defines.ListType.Extended].ToList().ForEach(x => otherptrs.AddRange((byte[])x.Table.Main));
+            foreach (var spr in Data.SprLists[Defines.ListType.Extended]) {
+                if (spr is null)
+                    otherptrs.AddRange(dummyPtr);
+                else
+                    otherptrs.AddRange((byte[])spr.Table.Main);
+            }
             await File.WriteAllBytesAsync(asmpath + "_ExtendedPtr.bin", otherptrs.ToArray());
 
             otherptrs.Clear();
-            Data.SprLists[Defines.ListType.Extended].ToList().ForEach(x => otherptrs.AddRange((byte[])x.ExtCapePtr));
+            foreach (var spr in Data.SprLists[Defines.ListType.Extended]) {
+                if (spr is null)
+                    otherptrs.AddRange(dummyPtr);
+                else
+                    otherptrs.AddRange((byte[])spr.ExtCapePtr);
+            }
             await File.WriteAllBytesAsync(asmpath + "_ExtendedCapePtr.bin", otherptrs.ToArray());
 
             byte[] extrabytes = new byte[0x200];
@@ -459,7 +484,7 @@ namespace SpriteSharp {
                     extrabytes[i] = 7;
                     extrabytes[i + 0x100] = 7;
                 } else {
-                    if (spr.Line >= 0) {
+                    if (spr is not null) {
                         extrabytes[i] = (byte)(3 + spr.ByteCount);
                         extrabytes[i + 0x100] = (byte)(3 + spr.ExtraByteCount);
                     } else {
@@ -496,6 +521,8 @@ namespace SpriteSharp {
                 int n = VerifySprite(0x200, i, Opts.PerLevel);
                 if (!(n == -1 || (Opts.PerLevel && i >= 0xB0 && i < 0xC0))) {
                     Sprite spr = Data.SprLists[Defines.ListType.Sprite][n];
+                    if (spr is null)
+                        continue;
                     if (spr.Line != -1) {
                         int ntile = Map16.FindFree(Data.Map, spr.MapData.Count);
                         if (ntile == -1) {
@@ -534,7 +561,7 @@ namespace SpriteSharp {
                             streams[mw2].WriteByte(0x70);
                             streams[mw2].WriteByte((byte)spr.Number);
                             int bcount = (coll.ExtraBit ? spr.ExtraByteCount : spr.ByteCount);
-                            await streams[mw2].WriteAsync(coll.Prop, 0, bcount);
+                            await streams[mw2].WriteAsync(coll.Prop.AsMemory(0, bcount));
                             if (index == 0) {
                                 await streams[mwt].WriteAsync(Encoding.UTF8.GetBytes($"{spr.Number:X02}\t{coll.Name}\n"));
                             } else {

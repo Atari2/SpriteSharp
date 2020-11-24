@@ -7,7 +7,7 @@
     <Platforms>AnyCPU</Platforms>
     <ApplicationIcon>Pixi.ico</ApplicationIcon>
     <AssemblyName>SpriteSharp</AssemblyName>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>SpriteSharp.pfx</AssemblyOriginatorKeyFile>
     <RootNamespace>SpriteSharp</RootNamespace>
   </PropertyGroup>

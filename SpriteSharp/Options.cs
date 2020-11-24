@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace SpriteSharp {
     class CommandLineOptions {
-        private string RomFile;
+        private readonly string RomFile;
         readonly List<string> Opts = new List<string>();
         public Dictionary<Defines.FileType, string> Paths = new();
         public Dictionary<Defines.ExtType, string> ExtPaths = new();
@@ -23,6 +23,7 @@ namespace SpriteSharp {
         public bool AlwaysRemap { get; private set; } = false;
         public bool MeiMeiDebug { get; private set; } = false;
         public bool MeiMeiKeepTemp { get; private set; } = false;
+        public bool Backup { get; private set; } = true;
 
         public IntPtr WindowHandle = new IntPtr();
         public ushort VerificationCode = 0;
@@ -130,6 +131,9 @@ namespace SpriteSharp {
                     case "-ext-off":
                         ExtMod = false;
                         break;
+                    case "-backup-off":
+                        Backup = false;
+                        break;
                     case "-r":
                         Paths.Add(Defines.FileType.Routines, Opts[++i]);
                         break;
@@ -182,6 +186,7 @@ namespace SpriteSharp {
         public bool KeepTmpFile = false;
         public bool ExtMod = false;
         public bool DisableMeiMei = false;
+        public bool Backup = true;
 
         //paths
         public string AsmDir = string.Empty;
@@ -205,6 +210,7 @@ namespace SpriteSharp {
             Disable255SpritePerLevel = cmd.Disable255SpritePerLevel;
             KeepTmpFile = cmd.KeepTmpFile;
             ExtMod = cmd.ExtMod;
+            Backup = cmd.Backup;
             DisableMeiMei = cmd.DisableMeiMei;
             AsmDir = cmd.AsmDir;
             AsmDirPath = cmd.AsmDirPath;

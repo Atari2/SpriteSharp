@@ -18,14 +18,21 @@ namespace SpriteSharp {
         }
 
         public static void WriteLongTable(this Sprite[] sprites, string filename) {
-            byte[] dummy = new byte[0x10];
-            List<byte> bytes = new();
-            Array.Fill<byte>(dummy, 0xFF);
-            if (SpriteTable.IsEmpty(sprites.ToList())) {
+            byte[] dummy = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+            if (SpriteTable.IsEmpty(sprites)) {
                 File.WriteAllBytes(filename, dummy);
             } else {
-                sprites.ToList().ForEach(x => bytes.AddRange(x.Table.ToBytes()));
-                File.WriteAllBytes(filename, bytes.ToArray());
+                byte[] emptyTable = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x80, 0x01, 0x21, 0x80, 0x01, 0x00, 0x00 };
+                var size = 0x10;
+                var tableSize = sprites.Length * size;
+                var buffer = new byte[tableSize];
+                foreach (var (spr, i) in sprites.WithIndex()) {
+                    if (spr is null)
+                        Array.Copy(emptyTable, 0, buffer, i * size, size);
+                    else
+                        Array.Copy(spr.Table, 0, buffer, i * size, size);
+                }
+                File.WriteAllBytes(filename, buffer);
             }
         }
 

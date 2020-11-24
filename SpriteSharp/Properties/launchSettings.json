@@ -1,7 +1,8 @@
 {
   "profiles": {
     "SpriteSharp": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "-k -d -out logFile.txt -meimei-d -meimei-k test.smc"
     }
   }
 }

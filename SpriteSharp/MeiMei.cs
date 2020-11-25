@@ -204,7 +204,7 @@ namespace SpriteSharp {
             return !revert;
         }
         public void ConfigureSa1Def(string pathToSa1Def) {
-            Sa1DefPath = pathToSa1Def;
+            Sa1DefPath = pathToSa1Def.Replace("!", @"\!");
         }
 
         byte ReadByte(MeiMeiRom rom, int addr) {

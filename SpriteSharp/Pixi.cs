@@ -400,15 +400,12 @@ namespace SpriteSharp {
                     }
                     Data.PlsSpritePtr[plslvaddr] = (byte)(Data.PlsDataAddr + 1);
                     Data.PlsSpritePtr[plslvaddr + 1] = (byte)((Data.PlsDataAddr + 1) >> 8);
-                    byte[] statptrs = new byte[15];
-                    int k = 0;
+                    List<byte> statptrs = new();
                     foreach (var ptr in spr.StatusPointers.Values) {
-                        statptrs[k] = ptr.LowByte;
-                        statptrs[++k] = ptr.HighByte;
-                        statptrs[++k] = ptr.BankByte;
+                        statptrs.AddRange(spr.StatusPtrsToBytes());
                     }
                     Array.Copy(spr.Table, 0, Data.PlsData, Data.PlsDataAddr, 0x10);
-                    Array.Copy(statptrs, 0, Data.PlsPointers, Data.PlsDataAddr, 15);
+                    Array.Copy(statptrs.ToArray(), 0, Data.PlsPointers, Data.PlsDataAddr, 15);
                     Data.PlsPointers[Data.PlsDataAddr + 0x0F] = 0xFF;
                     Data.PlsDataAddr += 0x10;
                 }
@@ -583,14 +580,17 @@ namespace SpriteSharp {
         }
         private void PatchSprite(List<string> extraDefines, ref Sprite spr, TextWriter output) {
             StringBuilder spritePatch = new();
+            string escapedAsmDir = Opts.AsmDir.Replace("!", @"\!");
+            string escapedDirectory = spr.Directory.Replace("!", @"\!");
+            string escapedAsmFile = spr.AsmFile.Replace("!", @"\!");
             spritePatch.Append("namespace nested on\n");
-            spritePatch.Append($"incsrc \"{Opts.AsmDir}sa1def.asm\"\n");
+            spritePatch.Append($"incsrc \"{escapedAsmDir}sa1def.asm\"\n");
             extraDefines.ForEach(x => spritePatch.Append($"incsrc \"{x}\"\n"));
             spritePatch.Append("incsrc \"shared.asm\"\n");
             spritePatch.Append($"SPRITE_ENTRY_{spr.Number}:\n");
-            spritePatch.Append($"incsrc \"{spr.Directory}_header.asm\"\n");
+            spritePatch.Append($"incsrc \"{escapedDirectory}_header.asm\"\n");
             spritePatch.Append("freecode cleaned\n");
-            spritePatch.Append($"\tincsrc \"{(Path.IsPathRooted(spr.AsmFile) ? "" : spr.Directory)}{spr.AsmFile}\"\n");
+            spritePatch.Append($"\tincsrc \"{(Path.IsPathRooted(spr.AsmFile) ? "" : escapedDirectory)}{escapedAsmFile}\"\n");
             spritePatch.Append("namespace nested off\n");
             File.WriteAllText(Defines.TempSprFile, spritePatch.ToString());
             Patch(Defines.TempSprFile);
@@ -685,9 +685,10 @@ namespace SpriteSharp {
             if (routines.Length > 100) {
                 throw new SpriteFailureException("More than 100 routines, please remove some");
             }
+            string escapedroutinepath = routinepath.Replace("!", @"\\\!");
             foreach (var (routine, count) in routines.WithIndex()) {
                 string name = Path.GetFileNameWithoutExtension(routine);
-                sr.Append($"!{name} = 0\nmacro {name}()\n\t%include_once(\"{routinepath}{name}.asm\", {name}, ${(count * 3):X02})\n\tJSL {name}\nendmacro\n");
+                sr.Append($"!{name} = 0\nmacro {name}()\n\t%include_once(\"{escapedroutinepath}{name}.asm\", {name}, ${(count * 3):X02})\n\tJSL {name}\nendmacro\n");
             }
             Console.WriteLine($"{routines.Length} Shared routines registered in \"{routinepath}\"");
             await File.WriteAllTextAsync("shared.asm", sr.ToString());

@@ -23,7 +23,7 @@ namespace SpriteSharp {
                 File.WriteAllBytes(filename, dummy);
             } else {
                 byte[] emptyTable = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x80, 0x01, 0x21, 0x80, 0x01, 0x00, 0x00 };
-                var size = 0x10;
+                var size = 0x10;        // a sprite table has 16 bytes
                 var tableSize = sprites.Length * size;
                 var buffer = new byte[tableSize];
                 foreach (var (spr, i) in sprites.WithIndex()) {

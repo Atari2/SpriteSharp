@@ -8,6 +8,26 @@ using System.Runtime.InteropServices;
 namespace AsarCLR {
 
     public static class ResourceExtractor {
+
+        public static string OSDependantLoad() {
+            string resourceName;
+            string libraryName;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                resourceName = "SpriteSharp.asar.dll";
+                libraryName = "asar.dll";
+            } else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) {
+                resourceName = "SpriteSharp.libasar.so";
+                libraryName = "libasar.so";
+            } else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                resourceName = "SpriteSharp.libasar.dylib";
+                libraryName = "libasar.dylib";
+            } else {
+                throw new PlatformNotSupportedException("This application doesn't support this platform");
+            }
+            if (!File.Exists(libraryName))
+                return LoadUnmanagedLibraryFromResource(Assembly.GetExecutingAssembly(), resourceName, libraryName);
+            return libraryName;
+        }
         public static string LoadUnmanagedLibraryFromResource(Assembly assembly,
                     string libraryResourceName,
                     string libraryName) {
@@ -23,13 +43,16 @@ namespace AsarCLR {
                 File.WriteAllBytes(tempDllPath, data);
 
             }
-
             NativeMethods.LoadLibraryWrap(libraryName);
             return tempDllPath;
         }
     }
 
     public static class NativeMethods {
+
+        [DllImport("libdl")]
+        private static extern IntPtr dlopen(string filename, int flags);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
         private static extern IntPtr LoadLibrary(string dllToLoad);
 
@@ -37,7 +60,14 @@ namespace AsarCLR {
         private static extern IntPtr PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
         public static void LoadLibraryWrap(string libraryName) {
-            LoadLibrary(libraryName);
+            const int RTLD_NOW = 2;
+            const int RTLD_GLOBAL = 8;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                LoadLibrary(libraryName);
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                dlopen(libraryName, RTLD_NOW | RTLD_GLOBAL);
+            else
+                throw new PlatformNotSupportedException();
         }
 
         public static bool PostMessageWrap(IntPtr handle, ushort verificationcode) {

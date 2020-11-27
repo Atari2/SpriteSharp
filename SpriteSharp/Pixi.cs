@@ -88,7 +88,7 @@ namespace SpriteSharp {
             if (Opts.Output != null)
                 await Opts.Output.FlushAsync();
 
-            if (Opts.LMHandle) {
+            if (Opts.LMHandle && OperatingSystem.IsWindows()) { // run this only if the current app is running on windows
                 if (!NativeMethods.PostMessageWrap(Opts.WindowHandle, Opts.VerificationCode)) {
                     throw new LunarMagicException();
                 }
